@@ -255,6 +255,7 @@ button.pill{border:0;cursor:pointer;font:600 12.5px var(--body)}
 .chatbar{position:sticky;bottom:calc(86px + env(safe-area-inset-bottom, 0px));display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding-block:8px;z-index:5}
 .chatbar textarea{min-height:46px;max-height:140px;font:500 15px var(--body);resize:none}
 .chip.add{border-style:dashed}
+.paybox{padding:14px;border-radius:16px;background:var(--soft, rgba(0,0,0,.04));gap:12px}
 .msg-tag{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
 .fixedit{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .fixmeta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
@@ -348,7 +349,11 @@ function parseMoney(s){
   return isFinite(n) ? Math.round(n*100) : 0;
 }
 function parseSigned(s){ const t = String(s ?? "").trim(); const n = parseMoney(t); return /^[-−–]/.test(t) || /^\(.*\)$/.test(t) ? -n : n; }
-const toInput = c => c ? (c/100).toFixed(2).replace(/\.00$/,"") : "";
+// Escribe miles con coma: 2,500 · 1,250,000.50
+const groupMoney = v => { const s = String(v ?? ""), neg = /^\s*[-−–]/.test(s), t = s.replace(/[^\d.]/g, ""), dot = t.indexOf(".");
+  let i = (dot < 0 ? t : t.slice(0, dot)).replace(/^0+(?=\d)/, ""), d = dot < 0 ? null : t.slice(dot + 1).replace(/\./g, "").slice(0, 2);
+  i = i.replace(/\B(?=(\d{3})+(?!\d))/g, ","); return (neg ? "-" : "") + i + (d != null ? "." + d : ""); };
+const toInput = c => c ? groupMoney((c < 0 ? "-" : "") + (Math.abs(c)/100).toFixed(2).replace(/\.00$/,"")) : "";
 const dayKey = (d=new Date()) => { d = new Date(d); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 const clamp = (n,a,b) => Math.min(b, Math.max(a, n));
 const dateLabel = iso => new Date(iso).toLocaleDateString("es-MX",{day:"numeric",month:"short"});
@@ -379,6 +384,21 @@ function save(){
 const KEY_STORE = "cochinito-api-key";
 function getKey(){ try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } }
 function setKey(k){ try { k ? localStorage.setItem(KEY_STORE, k) : localStorage.removeItem(KEY_STORE); } catch {} }
+// Servidor de IA de TuLana: lo llena GitHub al compilar (variables TULANA_SERVER y TULANA_TOKEN del repositorio)
+const SERVER_URL = "__TULANA_SERVER__", SERVER_TOKEN = "__TULANA_TOKEN__";
+const hasServer = () => SERVER_URL.startsWith("https://") && !SERVER_URL.includes("__TULANA");
+const aiAvailable = () => !!getKey() || hasServer();
+async function callServer(body, signal){
+  let res;
+  try {
+    res = await fetch(SERVER_URL, { method:"POST", signal, headers:{ "content-type":"application/json", ...(SERVER_TOKEN && !SERVER_TOKEN.startsWith("__") ? { "x-tulana-token": SERVER_TOKEN } : {}) }, body: JSON.stringify(body) });
+  } catch (e) { if (e?.name === "AbortError") throw { code:"cancelled" }; throw { code:"offline" }; }
+  if (res.status === 429) throw { code:"rate_limited" };
+  if (res.status === 401) throw { code:"server_auth" };
+  if (res.status >= 500 || !res.ok) { let c = "overloaded"; try { c = (await res.json()).error === "other" ? "other" : c; } catch {} throw { code:c }; }
+  const data = await res.json();
+  return String(data.text || "");
+}
 
 // ───────────────────────── Cálculos ─────────────────────────
 function allItems(){
@@ -504,7 +524,7 @@ Responde SOLO con un objeto JSON con esta forma exacta:
 {"merchant":"Minisuper El Sol","purchased_at":"2026-10-26T14:32:00","items":[{"raw":"COCA COLA 600ML 18.50","name":"Coca-Cola 600 ml","qty":1,"unit_cents":1850,"total_cents":1850,"category":"antojos","confidence":0.94}],"tax_cents":2237,"discount_cents":null,"total_cents":33640,"payment":"tarjeta_debito","legibility":"buena"}
 
 Reglas:
-1. Una entrada por producto. SUBTOTAL, TOTAL, IVA, CAMBIO, EFECTIVO, folios, RFC y direcciones NO son artículos.
+1. Una entrada por producto comprado. NO son artículos: SUBTOTAL, TOTAL, IVA, IEPS, CAMBIO, EFECTIVO, "SU PAGO", forma de pago (VISA, débito, número de tarjeta), puntos, monedero, ahorro, redondeo o donativo, número de artículos vendidos, folio, número de ticket, caja, cajero, RFC, sucursal, dirección, teléfono, fecha, hora, código de facturación ni mensajes como "GRACIAS POR SU COMPRA". Si dudas si una línea es un producto, no la incluyas.
 2. Montos en centavos enteros (18.50 → 1850). Si hay varias unidades usa qty y unit_cents; total_cents = qty × unit_cents.
 2b. Descuentos de un producto, promociones (2x1, 3x2) y devoluciones van como artículo aparte con total_cents NEGATIVO y la categoría del producto al que aplican. Un descuento a toda la compra va en discount_cents (número positivo), no como artículo.
 2c. tax_cents es el IVA que muestra el ticket; no lo agregues como artículo. total_cents es lo que se pagó.
@@ -580,13 +600,14 @@ function ticketDate(text){
 }
 function heuristic(text){
   const lines = text.split(/\r?\n/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
-  const NON = /\b(SUB\s?TOTAL|TOTAL|IVA|I\.V\.A|CAMBIO|EFECTIVO|TARJETA|SU PAGO|PAGO|RFC|FOLIO|CAJA|CAJERO|ARTICULOS|DESCUENTO|TRANSACCION|AUTORIZACION)\b/i;
+  const NON = /\b(SUB\s?-?TOTAL|TOTAL|IMPORTE|IVA|I\.V\.A|IEPS|IMPUESTO|CAMBIO|SU CAMBIO|EFECTIVO|TARJETA|VISA|MASTER ?CARD|AMEX|DEBITO|CREDITO|SU PAGO|PAGO|PAGADO|RECIBIDO|RFC|FOLIO|TICKET|TKT|CAJA|CAJERO|ATENDIO|ARTICULOS|ART\.? VENDIDOS|PIEZAS VENDIDAS|DESCUENTO|AHORRO|AHORRASTE|REDONDEO|DONATIVO|PUNTOS|MONEDERO|SALDO|BONIFICACION|TRANSACCION|AUTORIZACION|AUT\.?|REF\.?|AFILIACION|OPERACION|APROBAD[OA]|NO\.? DE|TEL\.?|TELEFONO|C\.?P\.?|SUCURSAL|TIENDA|CLIENTE|FACTURA|FACTURACION|REGIMEN|GRACIAS|VUELVA|WWW\.|HTTP|\.COM)\b|\*{2,}|X{4,}\d|\d{4}\s?\d{4}\s?\d{4}/i;
   const PRICE = /^(?:(\d{1,3})\s+)?(.+?)\s+([-−]?)\s*\$?\s*(\d{1,6}[.,]\d{2})\s*([-−])?\s*[A-Z]?$/i;
   const merchant = lines.slice(0, 5).find(l => /[A-ZÁÉÍÓÚÑ]{3,}/i.test(l) && !/RFC|SUC|CAJA|FOLIO|TICKET|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|^TEL/i.test(l)) || lines[0] || "";
   const items = [];
   for (const l of lines){
     if (NON.test(l)) continue; const m = l.match(PRICE); if (!m) continue;
-    const name = m[2].replace(/\s+/g," ").trim(); if (!/[A-ZÁÉÍÓÚÑ]{2,}/i.test(name)) continue;
+    const name = m[2].replace(/\s+/g," ").trim(); if (!/[A-ZÁÉÍÓÚÑ]{3,}/i.test(name)) continue;
+    if (/^\d{1,2}[:\/\-]\d{2}/.test(name) || /^[\d\s\-\/:#.]+$/.test(name.replace(/[A-Z]{1,2}\b/gi, ""))) continue;   // horas, fechas y códigos sueltos
     const { cat, conf } = classifyItem(name, merchant);
     items.push({raw:l, name, qty:m[1]?+m[1]:1, total:(m[3] || m[5] ? -1 : 1) * parseMoney(m[4]), cat, conf});
   }
@@ -653,6 +674,8 @@ const AI_ERRORS = {
   overloaded:"El servicio de IA está saturado. Inténtalo en un minuto.",
   offline:"Sin conexión a internet. Conéctate para leer el ticket con IA, o regístralo a mano.",
   invalid_json:"No pude interpretar el ticket. Toma otra foto más de cerca y con buena luz.",
+  server_auth:"El servidor de TuLana rechazó la conexión. Revisa la contraseña (TULANA_TOKEN).",
+  other:"La IA no pudo leer este ticket. Inténtalo otra vez o regístralo a mano.",
   ocr_fail:"No pude leer el texto de la foto. Toma otra más de cerca, con buena luz y el ticket bien estirado.",
   no_ocr:"Este teléfono no pudo usar el lector de texto. Pega el texto del ticket o regístralo a mano.",
 };
@@ -665,6 +688,9 @@ function parseJsonLoose(t){
   throw { code:"invalid_json" };
 }
 async function callClaude(model, prompt, imageB64, signal){
+  if (!getKey() && hasServer()) {
+    return parseJsonLoose(await callServer({ json:true, max_tokens:4096, messages:[{ role:"user", text: prompt + "\n\nResponde únicamente con el JSON, sin texto adicional.", image: imageB64 || null }] }, signal));
+  }
   const content = [];
   if (imageB64) content.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:imageB64 } });
   content.push({ type:"text", text: prompt + "\n\nResponde únicamente con el JSON, sin texto adicional." });
@@ -697,16 +723,17 @@ async function runScan({file, text}){
   try {
     let ex = null, engine = "ai";
     if (text && ocrQuality(text) < 0.35) { ui.scan = {status:"unreadable", preview}; return render(); }
-    if (getKey() && navigator.onLine !== false) {
+    if (aiAvailable() && navigator.onLine !== false) {
       ui.ctl = new AbortController();
       const img = file ? await blobToBase64(await imageToBlob(file)) : null;
       const prompt = aiPrompt(text||"");
       try {
         ex = normalizeAI(await callClaude(MODEL_FAST, prompt, img, ui.ctl.signal));
-        if (needsStronger(ex)) { try { ex = normalizeAI(await callClaude(MODEL_STRONG, prompt, img, ui.ctl.signal)); } catch (e) { if (e?.code === "cancelled") throw e; } }
+        if (getKey() && needsStronger(ex)) { try { ex = normalizeAI(await callClaude(MODEL_STRONG, prompt, img, ui.ctl.signal)); } catch (e) { if (e?.code === "cancelled") throw e; } }
       } catch (e) {
         if (e?.code === "cancelled") { ui.scan = null; return render(); }
-        if (file && !(e?.code === "offline" && window.AndroidBridge?.ocr)) throw e;
+        // Si la IA en línea falla (sin internet, saturada, límite del día), el teléfono lee la foto solo
+        if (file && !window.AndroidBridge?.ocr) throw e;
         ex = null;
       }
     }
@@ -1501,7 +1528,7 @@ function offlineAnswer(q){
   }
   return "Esa todavía no la sé responder sin IA. Puedo ayudarte con estos temas: en qué gastas más, cuánto puedes gastar, cómo repartir tu quincena, tus metas, fondo de emergencia, tarjetas de crédito o tus pagos fijos.";
 }
-const aiChatOn = () => ui.ai === "on" || (typeof getKey === "function" && !!getKey());
+const aiChatOn = () => aiAvailable();
 const CHAT_ERRORS = {
   not_granted:"No diste permiso para usar Claude en esta app. Puedes permitirlo y volver a preguntar.",
   rate_limited:"Hiciste muchas preguntas seguidas. Espera un momento y vuelve a intentar.",
@@ -1540,11 +1567,12 @@ Datos actuales del usuario:
 ${financeContext()}`;
 }
 async function askClaude(turns, { onText, signal } = {}){
-  if (!getKey()) throw { code:"no_key" };
+  if (!aiAvailable()) throw { code:"no_key" };
   const system = turns[0]?.content || "";
   const msgs = [];
   for (const t of turns.slice(1)) { const last = msgs[msgs.length-1]; if (last && last.role === t.role) last.content += "\n\n" + t.content; else msgs.push({ role:t.role, content:t.content }); }
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
+  if (!getKey()) { const text = (await callServer({ system, max_tokens:800, messages: msgs.map(x => ({ role:x.role, text:x.content })) }, signal)).trim(); onText?.(text); return text; }
   let res;
   try {
     res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", signal,
@@ -1572,10 +1600,11 @@ async function sendChat(q){
     }});
     S.chat.push({ role:"assistant", content: String(text || "").trim() || "No tengo una respuesta para eso. ¿Me lo preguntas de otra forma?", at:new Date().toISOString() });
   } catch (e) {
-    if (["unavailable","no_key","not_granted","offline"].includes(e?.code)) {
+    if (["unavailable","no_key","not_granted","offline","rate_limited","overloaded"].includes(e?.code)) {
       // Sin IA disponible: Merino contesta con sus respuestas programadas
       S.chat.push({ role:"assistant", content: offlineAnswer(q), offline:true, at:new Date().toISOString() });
       if (e.code === "offline") ui.chatErr = "Sin internet: te respondí en modo rápido.";
+      if (e.code === "rate_limited" || e.code === "overloaded") ui.chatErr = "La IA está ocupada en este momento: te respondí en modo rápido.";
     } else {
       if (e?.text) S.chat.push({ role:"assistant", content: e.text, at:new Date().toISOString() });
       if (e?.code !== "cancelled") ui.chatErr = CHAT_ERRORS[e?.code] || "No pude responder en este momento. Intenta otra vez.";
@@ -1673,6 +1702,24 @@ const catOptions = c => Object.entries(CATS).map(([k,v])=>`<option value="${k}" 
 
 // ---------- Onboarding ----------
 const WORK_OPTIONS = ["No trabajo", "Medio tiempo", "Tiempo completo", "Por mi cuenta"];
+const SRC_NAMES = { work: w => w === "Por mi cuenta" ? "Mi negocio o trabajo" : "Sueldo", beca: () => "Beca" };
+const srcIncome = src => (S.profile.incomes || []).find(i => i.src === src);
+function syncSrcIncome(src, on, freq){
+  const P = S.profile; P.incomes ||= []; const cur = srcIncome(src);
+  if (!on) { if (cur) P.incomes = P.incomes.filter(i => i !== cur); return; }
+  const name = SRC_NAMES[src](P.work);
+  if (!cur) {
+    const same = P.incomes.find(i => !i.src && i.name === name);   // si ya lo había agregado a mano, lo reutiliza
+    if (same) same.src = src; else P.incomes.unshift({ id:uid(), name, amt:0, freq, src });
+  } else if (Object.values(SRC_NAMES).some(f => [f("Por mi cuenta"), f("")].includes(cur.name))) cur.name = name;
+}
+function payBlock(i, label, freqs){
+  if (!i) return "";
+  return `<div class="paybox stack"><label class="field"><span>${label}</span><input id="pay-${i.src}" inputmode="decimal" data-income="${i.id}" data-k="amt" value="${toInput(i.amt)}" placeholder="$0" aria-label="${label}"></label>
+    <div class="stack" style="gap:6px"><span class="label">¿Cada cuánto?</span><div class="chips">${freqs.map(f => `<button class="chip" data-act="setfreq" data-id="${i.id}" data-val="${f}" aria-pressed="${i.freq === f}">${f === "variable" ? "Varía" : FREQS[f].n}</button>`).join("")}</div></div>
+    <p class="small muted" id="pm-${i.src}">${payMonthly(i)}</p></div>`;
+}
+const payMonthly = i => i.amt ? (i.freq === "mensual" ? `Son ${fmt0(i.amt)} al mes.` : i.freq === "variable" ? "Pon un promedio de lo que te entra al mes." : `Eso equivale a unos ${fmt0(Math.round(i.amt * FREQS[i.freq].f))} al mes.`) : "Escribe cuánto recibes cada vez que te pagan.";
 const INCOME_SUGGESTIONS = [["Beca","mensual"],["Sueldo","quincenal"],["Mesada","semanal"],["Ventas o freelance","variable"],["Apoyo familiar","mensual"]];
 function viewOnboarding(){
   const st = ui.onb, P = S.profile, total = 6;
@@ -1697,15 +1744,20 @@ function viewOnboarding(){
         <button class="chip" data-act="set" data-f="profile.tone" data-val="directo" aria-pressed="${P.tone==="directo"}">Directo</button></div></div>`;
   }
   if (st === 2) {
-    canNext = P.student !== null && !!P.work;
+    const wi = srcIncome("work"), bi = srcIncome("beca");
+    canNext = P.student !== null && !!P.work && (!wi || wi.amt > 0) && (!bi || bi.amt > 0);
     body = `<div class="q">¿A qué te dedicas?</div>
       <div class="stack"><span class="label">¿Estudias?</span><div class="chips">${chip("profile.student","true","Sí, estudio")}${chip("profile.student","false","No")}</div></div>
       ${P.student ? `<div class="stack"><span class="label">Nivel</span><div class="chips">${["Prepa","Universidad","Posgrado","Curso o técnica"].map(l=>`<button class="chip" data-act="set" data-f="profile.level" data-val="${l}" aria-pressed="${P.level===l}">${l}</button>`).join("")}</div></div>` : ""}
-      <div class="stack"><span class="label">¿Trabajas?</span><div class="chips">${WORK_OPTIONS.map(w=>`<button class="chip" data-act="set" data-f="profile.work" data-val="${w}" aria-pressed="${P.work===w}">${w}</button>`).join("")}</div></div>`;
+      ${P.student ? `<div class="stack"><span class="label">¿Tienes beca?</span><div class="chips">${chip("profile.hasBeca","true","Sí")}${chip("profile.hasBeca","false","No")}</div></div>
+        ${payBlock(bi, "¿De cuánto es tu beca?", ["mensual","bimestral","semestral"])}` : ""}
+      <div class="stack"><span class="label">¿Trabajas?</span><div class="chips">${WORK_OPTIONS.map(w=>`<button class="chip" data-act="set" data-f="profile.work" data-val="${w}" aria-pressed="${P.work===w}">${w}</button>`).join("")}</div></div>
+      ${payBlock(wi, P.work === "Por mi cuenta" ? "¿Cuánto ganas, más o menos?" : "¿Cuánto te pagan?", ["semanal","quincenal","mensual","variable"])}`;
   }
   if (st === 3) {
-    body = `<div class="q">¿Qué dinero recibes y cada cuánto?</div>
-      <p class="muted">Agrega cada ingreso por separado: beca, sueldo, mesada, ventas. Si cambia cada vez, pon un promedio.</p>
+    const anySrc = P.incomes.some(i => i.src);
+    body = `<div class="q">${anySrc ? "¿Recibes algún otro dinero?" : "¿Qué dinero recibes y cada cuánto?"}</div>
+      <p class="muted">${anySrc ? "Ya anoté lo que me dijiste. Agrega lo demás, como mesada, ventas o apoyo familiar. Si no recibes nada más, continúa." : "Agrega cada ingreso por separado: beca, sueldo, mesada, ventas. Si cambia cada vez, pon un promedio."}</p>
       <div class="chips">${INCOME_SUGGESTIONS.filter(([n])=>!P.incomes.some(i=>i.name===n)).map(([n,f])=>`<button class="chip" data-act="addincome" data-n="${n}" data-f="${f}">+ ${n}</button>`).join("")}</div>
       <div class="stack">${P.incomes.map(incomeEditRow).join("")}
       <button class="btn soft sm" data-act="addincome" data-n="" data-f="mensual" style="align-self:flex-start">+ Otro ingreso</button></div>
@@ -1766,7 +1818,7 @@ function dueInfo(f){
 function accountEditRow(a){
   return `<div class="rowedit acc"><input id="ac-n-${a.id}" data-acc="${a.id}" data-k="name" value="${esc(a.name)}" aria-label="Nombre" placeholder="Nombre">
     <select class="typ" id="ac-t-${a.id}" data-acc="${a.id}" data-k="type" aria-label="Tipo">${Object.entries(ACC_TYPES).map(([k,v])=>`<option value="${k}" ${a.type===k?"selected":""}>${v}</option>`).join("")}</select>
-    <input id="ac-b-${a.id}" inputmode="decimal" data-acc="${a.id}" data-k="balance" value="${a.balance ? (a.balance/100).toFixed(2).replace(/\.00$/,"") : ""}" placeholder="${a.type==="credito" ? "Deuda, ej. -500" : "Saldo"}" aria-label="Saldo">
+    <input id="ac-b-${a.id}" inputmode="decimal" data-acc="${a.id}" data-k="balance" value="${toInput(a.balance)}" placeholder="${a.type==="credito" ? "Deuda, ej. -500" : "Saldo"}" aria-label="Saldo">
     <button class="x" data-act="delacc" data-id="${a.id}" aria-label="Quitar ${esc(a.name || "cuenta")}">×</button></div>`;
 }
 function planBox(){
@@ -1951,7 +2003,7 @@ function viewScan(){
   if (sc?.status === "reading") return `${header("Escanear")}
     <div class="scanning">${sc.preview ? `<img src="${sc.preview}" alt="Tu ticket">` : `<p class="muted">Leyendo texto…</p>`}<div class="beam"></div></div>
     ${mascotRow("lee", say("scan_reading"))}
-    <div class="stack" style="align-items:center;text-align:center"><p class="small muted">${getKey() ? "La IA está identificando cada producto y su categoría. Suele tardar entre 5 y 30 segundos." : "Estoy leyendo el ticket aquí en tu teléfono y clasificando cada producto. Tarda unos segundos."}</p>
+    <div class="stack" style="align-items:center;text-align:center"><p class="small muted">${aiAvailable() ? "La IA está identificando cada producto y su categoría. Suele tardar entre 5 y 30 segundos." : "Estoy leyendo el ticket aquí en tu teléfono y clasificando cada producto. Tarda unos segundos."}</p>
     <button class="btn ghost sm" data-act="cancelscan">Cancelar</button></div>`;
   if (sc?.status === "unreadable") return `${header("Escanear")}
     ${mascotRow("preocupado", say("scan_unreadable"))}
@@ -1959,7 +2011,7 @@ function viewScan(){
     <ul class="small" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li>Ponlo sobre una superficie oscura y plana.</li><li>Busca buena luz, sin sombras ni flash directo.</li><li>Encuadra el ticket completo, del nombre de la tienda al total.</li><li>Si el ticket es térmico y está muy desgastado, regístralo a mano.</li></ul>
     <div class="row wrap"><button class="btn accent" data-act="pickphoto">Tomar otra foto</button><button class="btn ghost" data-act="manual">Registrar a mano</button></div></div>`;
   const err = sc?.status === "error" ? `<p class="alert bad">${esc(sc.error)}</p>` : "";
-  const aiNote = !getKey() ? `<p class="small muted">Leo tus fotos aquí en el teléfono, sin internet. Para una lectura aún más precisa con IA, agrega tu clave en <button class="link" data-act="go" data-v="profile">Perfil</button> (opcional).</p>` : "";
+  const aiNote = aiAvailable() ? `<p class="small muted">Leo tus fotos con IA en línea. Si no hay internet, las leo aquí en el teléfono.</p>` : `<p class="small muted">Leo tus fotos aquí en el teléfono, sin internet.</p>`;
   return `${header("Escanear")}${err}
     ${mascotRow("feliz", say("scan_idle"), {size:"sm"})}
     <label class="drop" for="photo">${IC.camera}<h3>Toma o sube la foto del ticket</h3><p class="small muted">Claude lee cada producto, su precio y le asigna categoría. Tú solo confirmas.</p>
@@ -2082,8 +2134,9 @@ function viewProfile(){
   ${fold("temporadas", "Temporadas", theme)}
   ${fold("fotos", "Fotos de tickets", `<label class="toggle"><input type="checkbox" id="p-photos" ${S.keepPhotos ? "checked" : ""}> Guardar la foto de cada ticket escaneado</label>
     <p class="small muted">Las fotos se guardan solo en este dispositivo y no se suben a ningún servidor; para leerlas se envían una vez a la IA. Te sirven para revisar o corregir un gasto después. Si borras un gasto, se borra su foto.</p>`)}
-  <div class="card"><div class="row between"><h3>IA opcional</h3><span class="pill ${getKey()?"good":""}">${getKey()?"Activa":"Modo sin IA"}</span></div>
-    <p class="small muted">Sin clave, el escáner lee tus tickets en el teléfono y Merino responde en modo rápido con tus datos. Si pegas una clave de la API de Claude (console.anthropic.com), las lecturas y el chat usan IA. Se guarda solo en este teléfono y cada uso se cobra a tu cuenta de la API.</p>
+  <div class="card"><div class="row between"><h3>Inteligencia artificial</h3><span class="pill ${aiAvailable()?"good":""}">${getKey() ? "Con tu clave" : hasServer() ? "IA de TuLana activa" : "Modo sin IA"}</span></div>
+    <p class="small muted">${hasServer() ? "El escáner y el chat usan la IA de TuLana con internet. Las fotos de tus tickets se envían al servidor solo para leerlas. Sin internet, el teléfono lee los tickets y Merino responde en modo rápido." : "Sin IA, el escáner lee tus tickets en el teléfono y Merino responde en modo rápido con tus datos."}</p>
+    <p class="small muted">Opcional: si pegas tu propia clave de la API de Claude (console.anthropic.com), se usa esa. Se guarda solo en este teléfono y cada uso se cobra a tu cuenta.</p>
     <div class="row"><input id="p-key" type="password" autocomplete="off" placeholder="${getKey() ? "•••• guardada" : "sk-ant-..."}"><button class="btn sm" data-act="savekey">Guardar</button></div>
     ${getKey() ? `<button class="link small" data-act="delkey" style="align-self:flex-start">Quitar clave</button>` : ""}</div>
   <div class="card"><h3>Datos</h3>
@@ -2114,7 +2167,12 @@ const ACT = {
     ui.onb = clamp(ui.onb + d, 0, 6); render(); window.scrollTo(0,0);
     const f = document.querySelector(".onb input:not([type=range])"); if (f && d>0) f.focus();
   },
-  set: t => { const v = t.dataset.val; setPath(t.dataset.f, v==="true"?true:v==="false"?false:v); if (S.onboarded) save(); render(); },
+  set: t => { const v = t.dataset.val, f = t.dataset.f; setPath(f, v==="true"?true:v==="false"?false:v);
+    if (f === "profile.work") syncSrcIncome("work", v !== "No trabajo", v === "Por mi cuenta" ? "variable" : "quincenal");
+    if (f === "profile.hasBeca") syncSrcIncome("beca", v === "true", "mensual");
+    if (f === "profile.student" && v === "false") { S.profile.hasBeca = null; syncSrcIncome("beca", false); }
+    if (S.onboarded) save(); render(); if (f === "profile.work" || f === "profile.hasBeca") setTimeout(() => { const el = $(f === "profile.work" ? "#pay-work" : "#pay-beca"); if (el && !el.value) el.focus(); }, 0); },
+  setfreq: t => { const i = (S.profile.incomes || []).find(x => x.id === t.dataset.id); if (!i) return; i.freq = t.dataset.val; if (S.onboarded) save(); render(); },
   addincome: t => { (S.profile.incomes ||= []).push({ id:uid(), name:t.dataset.n || "", amt:0, freq:t.dataset.f || "mensual" }); ui.open.ingresos = true; if (S.onboarded) save(); render();
     const ins = document.querySelectorAll("[data-income][data-k=amt]"); ins[ins.length-1]?.focus(); },
   delincomesrc: t => { S.profile.incomes = S.profile.incomes.filter(i => i.id !== t.dataset.id); if (S.onboarded) save(); render(); },
@@ -2238,6 +2296,15 @@ document.addEventListener("click", e => {
 document.addEventListener("toggle", e => { const d = e.target; if (d?.dataset?.fold) ui.open[d.dataset.fold] = d.open; }, true);
 document.addEventListener("submit", e => { if (e.target.id === "chatform") { e.preventDefault(); const i = $("#chat-in"); sendChat(i?.value); } });
 document.addEventListener("keydown", e => { if (e.target.id === "chat-in" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); } });
+// Mientras escribes una cantidad, agrega las comas sin mover el cursor
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.tagName !== "INPUT" || el.inputMode !== "decimal" || e.inputType === "insertCompositionText") return;
+  const old = el.value, pos = el.selectionStart ?? old.length, keep = old.slice(0, pos).replace(/[^\d.\-−–]/g, "").length, nv = groupMoney(old);
+  if (nv === old) return;
+  el.value = nv; let n = 0, c = 0; while (c < nv.length && n < keep) { if (/[\d.\-]/.test(nv[c])) n++; c++; }
+  try { el.setSelectionRange(c, c); } catch {}
+}, true);
 document.addEventListener("input", e => {
   const el = e.target;
   if (el.dataset.bind) {
@@ -2260,7 +2327,9 @@ document.addEventListener("input", e => {
   }
   if (el.dataset.income) {
     const i = S.profile.incomes.find(x=>x.id===el.dataset.income);
-    if (i) { i[el.dataset.k] = el.dataset.k==="amt" ? parseMoney(el.value) : el.value; const s = $("#inc-sum"); if (s) s.textContent = S.onboarded ? fmt0(monthlyIn()) + "/mes" : fmt(monthlyIn()); if (S.onboarded) save(); }
+    if (i) { i[el.dataset.k] = el.dataset.k==="amt" ? parseMoney(el.value) : el.value; const s = $("#inc-sum"); if (s) s.textContent = S.onboarded ? fmt0(monthlyIn()) + "/mes" : fmt(monthlyIn()); if (S.onboarded) save();
+      if (i.src && $("#pm-" + i.src)) $("#pm-" + i.src).textContent = payMonthly(i);
+      if (!S.onboarded && ui.onb === 2 && $("#next")) { const w = srcIncome("work"), b = srcIncome("beca"); $("#next").disabled = !(S.profile.student !== null && S.profile.work && (!w || w.amt > 0) && (!b || b.amt > 0)); } }
   }
   if (el.dataset.fixed) { const f = S.fixed.find(x=>x.id===el.dataset.fixed), k = el.dataset.k;
     if (f) { f[k] = el.type === "checkbox" ? el.checked : k==="amt" ? parseMoney(el.value) : k==="dueDay" ? (+el.value || null) : el.value; if (S.onboarded) save(); } }

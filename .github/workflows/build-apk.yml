@@ -22,6 +22,25 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Conectar con el servidor de IA de TuLana (si está configurado)
+        env:
+          TULANA_SERVER: ${{ vars.TULANA_SERVER }}
+          TULANA_TOKEN: ${{ vars.TULANA_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, json
+          p = 'app/src/main/assets/index.html'
+          s = open(p, encoding='utf-8').read()
+          url = os.environ.get('TULANA_SERVER', '').strip().rstrip('/')
+          tok = os.environ.get('TULANA_TOKEN', '').strip()
+          if url:
+              s = s.replace('"__TULANA_SERVER__"', json.dumps(url)).replace('"__TULANA_TOKEN__"', json.dumps(tok))
+              print('Servidor de IA:', url)
+          else:
+              print('Sin servidor de IA: la app usará el modo sin IA')
+          open(p, 'w', encoding='utf-8').write(s)
+          PY
+
       - name: Compilar APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
