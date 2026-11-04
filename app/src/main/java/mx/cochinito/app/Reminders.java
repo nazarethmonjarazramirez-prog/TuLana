@@ -1,0 +1,165 @@
+package mx.cochinito.app;
+
+import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
+/** Recordatorios de Merino: como máximo una notificación al día. */
+public final class Reminders {
+    private static final String PREFS = "tulana", CHANNEL = "recordatorios", WORK = "tulana-recordatorio";
+    private static final int NOTIF_ID = 1001;
+
+    private static final String[][] GENERAL = {
+        {"¿Cómo te fue hoy con tu dinero?", "Escanea tus tickets del día. Te tardas menos de un minuto."},
+        {"Merino te extraña 🐑", "Registra tus gastos de hoy y mira cuánto te queda para el mes."},
+        {"Ese antojo también cuenta", "Anota tus compras pequeñas: son las que más se escapan."},
+        {"Tu cochinito te espera", "Cada peso que apartas hoy te acerca a tu meta."},
+        {"Un minuto para tu dinero", "Revisa en qué se te fue el dinero esta semana."},
+        {"¿Guardaste el ticket?", "Tómale foto antes de que se pierda y yo lo clasifico."},
+    };
+
+    private Reminders() { }
+
+    private static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
+
+    private static String day(int offset) {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DAY_OF_YEAR, offset);
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.getTime());
+    }
+
+    static void markOpened(Context c) { prefs(c).edit().putString("lastOpen", day(0)).apply(); }
+
+    static boolean allowed(Context c) {
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return false;
+        return NotificationManagerCompat.from(c).areNotificationsEnabled();
+    }
+
+    /** La app manda su estado (metas, racha, pagos fijos) y la hora elegida. */
+    static void configure(Context c, String json, Runnable askPermission) {
+        try {
+            JSONObject o = new JSONObject(json);
+            boolean on = o.optBoolean("on", false);
+            int h = o.optInt("hour", 20), m = o.optInt("minute", 0);
+            String sched = on ? (h + ":" + m) : "off";
+            SharedPreferences p = prefs(c);
+            p.edit().putString("state", json).apply();
+            if (sched.equals(p.getString("sched", ""))) return;
+            p.edit().putString("sched", sched).apply();
+            WorkManager wm = WorkManager.getInstance(c);
+            if (on) {
+                PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(ReminderWorker.class, 24, TimeUnit.HOURS)
+                        .setInitialDelay(delayTo(h, m), TimeUnit.MILLISECONDS)
+                        .build();
+                wm.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, req);
+                if (askPermission != null) askPermission.run();
+            } else {
+                wm.cancelUniqueWork(WORK);
+            }
+        } catch (Exception ignored) { }
+    }
+
+    private static long delayTo(int h, int m) {
+        Calendar now = Calendar.getInstance(), next = Calendar.getInstance();
+        next.set(Calendar.HOUR_OF_DAY, h);
+        next.set(Calendar.MINUTE, m);
+        next.set(Calendar.SECOND, 0);
+        if (!next.after(now)) next.add(Calendar.DAY_OF_YEAR, 1);
+        return next.getTimeInMillis() - now.getTimeInMillis();
+    }
+
+    /** Lo ejecuta WorkManager una vez al día a la hora elegida. */
+    static void runDaily(Context c) {
+        SharedPreferences p = prefs(c);
+        String today = day(0);
+        if (today.equals(p.getString("lastNotified", ""))) return;
+        JSONObject s;
+        try { s = new JSONObject(p.getString("state", "{}")); } catch (Exception e) { return; }
+        if (!s.optBoolean("on", false)) return;
+
+        String[] msg = paymentMessage(s);
+        if (msg == null) {
+            // Si ya abriste la app hoy, Merino no molesta
+            if (today.equals(p.getString("lastOpen", ""))) return;
+            int streak = s.optInt("streak", 0);
+            if (streak > 0 && day(-1).equals(s.optString("streakLast", ""))) {
+                msg = new String[]{"Tu racha de " + streak + (streak == 1 ? " día" : " días") + " está en riesgo 🔥",
+                        "Registra un gasto hoy para no perderla."};
+            } else {
+                msg = GENERAL[Calendar.getInstance().get(Calendar.DAY_OF_YEAR) % GENERAL.length];
+            }
+        }
+        if (show(c, msg[0], msg[1])) p.edit().putString("lastNotified", today).apply();
+    }
+
+    private static String[] paymentMessage(JSONObject s) {
+        JSONArray fx = s.optJSONArray("fixed");
+        if (fx == null) return null;
+        Calendar cal = Calendar.getInstance();
+        int dom = cal.get(Calendar.DAY_OF_MONTH), last = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+        String month = new SimpleDateFormat("yyyy-MM", Locale.US).format(new Date());
+        for (int i = 0; i < fx.length(); i++) {
+            JSONObject f = fx.optJSONObject(i);
+            if (f == null) continue;
+            int due = Math.min(f.optInt("dueDay", 0), last);
+            if (due <= 0) continue;
+            boolean paidThisMonth = month.equals(f.optString("paid", ""));
+            String name = f.optString("name", "tu pago"), amt = f.optString("amt", "");
+            if (due == dom && !paidThisMonth)
+                return new String[]{"Hoy vence " + name, "Son " + amt + ". Cuando lo pagues, márcalo en TuLana."};
+            boolean tomorrow = due == dom + 1 || (dom == last && f.optInt("dueDay", 0) == 1);
+            if (tomorrow && (!paidThisMonth || dom == last))
+                return new String[]{"Mañana vence " + name, "Son " + amt + ". Ya lo tengo apartado de lo que puedes gastar."};
+        }
+        return null;
+    }
+
+    static boolean show(Context c, String title, String text) {
+        if (!allowed(c)) return false;
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Recordatorios de Merino", NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setDescription("Avisos para registrar tus gastos, pagos por vencer y tu racha");
+            nm.createNotificationChannel(ch);
+        }
+        Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pi = PendingIntent.getActivity(c, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
+                .setSmallIcon(R.drawable.ic_stat_merino)
+                .setColor(0xFFC4531E)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setAutoCancel(true)
+                .setContentIntent(pi);
+        try {
+            NotificationManagerCompat.from(c).notify(NOTIF_ID, b.build());
+            return true;
+        } catch (SecurityException e) {
+            return false;
+        }
+    }
+}

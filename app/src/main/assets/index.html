@@ -2139,6 +2139,10 @@ function viewProfile(){
     <p class="small muted">Opcional: si pegas tu propia clave de la API de Claude (console.anthropic.com), se usa esa. Se guarda solo en este teléfono y cada uso se cobra a tu cuenta.</p>
     <div class="row"><input id="p-key" type="password" autocomplete="off" placeholder="${getKey() ? "•••• guardada" : "sk-ant-..."}"><button class="btn sm" data-act="savekey">Guardar</button></div>
     ${getKey() ? `<button class="link small" data-act="delkey" style="align-self:flex-start">Quitar clave</button>` : ""}</div>
+  ${window.AndroidBridge?.setReminders ? `<div class="card"><div class="row between"><h3>Recordatorios de Merino</h3><label class="toggle"><input type="checkbox" id="rem-on" data-act="remtoggle" ${remCfg().on ? "checked" : ""}> Activos</label></div>
+    <p class="small muted">Te aviso si no has registrado nada en el día, cuando un pago fijo vence mañana y si tu racha está en riesgo. Máximo una notificación al día.</p>
+    ${remCfg().on ? `<label class="row" style="gap:10px"><span>Hora del aviso</span><select id="rem-hour" style="width:auto">${[8,9,12,14,18,19,20,21,22].map(h => `<option value="${h}" ${remCfg().hour === h ? "selected" : ""}>${h}:00</option>`).join("")}</select></label>
+    <button class="btn soft sm" data-act="remtest" style="align-self:flex-start">Probar notificación</button>` : ""}</div>` : ""}
   <div class="card"><h3>Datos</h3>
     ${dataCardBody()}
     <p class="small muted">Tus datos se guardan solo en este teléfono. Si desinstalas la app se borran.</p></div>`;
@@ -2284,6 +2288,8 @@ const ACT = {
   clearchat: () => { S.chat = []; ui.chatErr = null; save(); render(); },
   savekey: () => { const v = $("#p-key")?.value.trim(); if (!v) { toast("Pega tu clave primero"); return; } if (!v.startsWith("sk-")) { toast("Esa clave no parece válida: empieza con sk-"); return; } setKey(v); render(); toast("Clave guardada. Ya puedes escanear fotos"); },
   delkey: () => { setKey(""); render(); toast("Clave eliminada"); },
+  remtoggle: t => { S.reminders = { ...remCfg(), on: t.checked }; save(); render(); toast(t.checked ? "Recordatorios activados" : "Recordatorios apagados"); },
+  remtest: () => { try { AndroidBridge.testReminder(); } catch {} },
   askreset: () => { ui.confirmReset = true; render(); },
   noreset: () => { ui.confirmReset = false; render(); },
   reset: () => { S = freshState(); ui.onb = 0; ui.view = "home"; ui.goalId = null; ui.confirmReset = false; save(); render(); },
@@ -2366,6 +2372,21 @@ document.addEventListener("change", e => {
   if (local && local.v === 1) S = Object.assign(freshState(), local);
   render();
 })();
+// Recordatorios de Merino: el teléfono los manda aunque la app esté cerrada
+function remCfg(){ const r = S.reminders || {}; return { on: r.on !== false, hour: r.hour ?? 20 }; }
+function reminderPayload(){
+  const r = remCfg(), paid = paidFixedMap();
+  return JSON.stringify({ on: !!S.onboarded && r.on, hour: r.hour, minute: 0, name: S.profile?.name || "",
+    streak: S.streak?.cur || 0, streakLast: S.streak?.last || "",
+    fixed: (S.fixed || []).filter(f => f.amt > 0 && f.dueDay).map(f => ({ name: f.name || "tu pago", amt: fmt0(f.amt), dueDay: f.dueDay, paid: paid[f.id] ? monthKey() : "" })) });
+}
+let remTimer = null;
+function syncReminders(){ if (!window.AndroidBridge?.setReminders) return; clearTimeout(remTimer); remTimer = setTimeout(() => { try { AndroidBridge.setReminders(reminderPayload()); } catch {} }, 400); }
+{ const baseSave = save; save = function(...a){ const out = baseSave.apply(this, a); syncReminders(); return out; }; }
+syncReminders();
+window.__notifPerm = ok => { if (!ok) toast("Sin permiso no puedo mandarte recordatorios. Puedes activarlo en los ajustes del teléfono."); };
+document.addEventListener("change", e => { if (e.target.id === "rem-hour") { S.reminders = { ...remCfg(), hour: +e.target.value }; save(); toast(`Te aviso a las ${e.target.value}:00`); } });
+
 // Botón "atrás" de Android: regresa de pantalla en vez de cerrar la app
 window.onAndroidBack = function(){
   if (!S.onboarded) { if (ui.onb > 0) { ui.onb--; render(); return true; } return false; }

@@ -1,11 +1,14 @@
 package mx.cochinito.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -23,6 +26,7 @@ import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -55,6 +59,7 @@ public class MainActivity extends ComponentActivity {
     private Uri cameraUri;
     private ActivityResultLauncher<Intent> picker;
     private TextRecognizer recognizer;
+    private ActivityResultLauncher<String> notifPerm;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -91,6 +96,10 @@ public class MainActivity extends ComponentActivity {
             }
         });
 
+        // Permiso de notificaciones (Android 13 o más reciente)
+        notifPerm = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted ->
+                web.evaluateJavascript("window.__notifPerm && window.__notifPerm(" + granted + ")", null));
+
         // Puente para que la app pinte la barra de estado con el color de la temporada
         web.addJavascriptInterface(new Object() {
             @JavascriptInterface
@@ -107,6 +116,23 @@ public class MainActivity extends ComponentActivity {
                     } catch (Exception ignored) { }
                 });
             }
+
+            // Recordatorios de Merino: la app manda su estado y la hora elegida
+            @JavascriptInterface
+            public void setReminders(String json) {
+                runOnUiThread(() -> Reminders.configure(MainActivity.this, json, MainActivity.this::askNotifPermission));
+            }
+
+            @JavascriptInterface
+            public void testReminder() {
+                runOnUiThread(() -> {
+                    if (!Reminders.allowed(MainActivity.this)) { askNotifPermission(); return; }
+                    Reminders.show(MainActivity.this, "¡Hola! Soy Merino 🐑", "Así se ven mis recordatorios. Te aviso a la hora que elegiste.");
+                });
+            }
+
+            @JavascriptInterface
+            public boolean notificationsAllowed() { return Reminders.allowed(MainActivity.this); }
 
             // Lee el texto de la foto del ticket en el teléfono (ML Kit, sin internet)
             @JavascriptInterface
@@ -186,6 +212,19 @@ public class MainActivity extends ComponentActivity {
         } else {
             web.loadUrl("https://" + HOST + "/assets/index.html");
         }
+    }
+
+    private void askNotifPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Reminders.markOpened(this);
     }
 
     private void readTicket(String b64, String id) {
