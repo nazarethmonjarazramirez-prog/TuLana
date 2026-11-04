@@ -255,6 +255,11 @@ button.pill{border:0;cursor:pointer;font:600 12.5px var(--body)}
 .chatbar{position:sticky;bottom:calc(86px + env(safe-area-inset-bottom, 0px));display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding-block:8px;z-index:5}
 .chatbar textarea{min-height:46px;max-height:140px;font:500 15px var(--body);resize:none}
 .chip.add{border-style:dashed}
+.msg-tag{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
+.fixedit{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.fixmeta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.fixmeta select{width:auto;padding:8px 10px;font-size:14px}
+.toggle.small{font-size:13.5px}
 /* Menos carga visual */
 .hero-card{gap:6px}
 .season .garland{height:40px}
@@ -530,31 +535,66 @@ function normalizeAI(raw){
     tax: num(o.tax_cents) != null ? Math.abs(num(o.tax_cents)) : null, discount: num(o.discount_cents) != null ? Math.abs(num(o.discount_cents)) : null, total: num(o.total_cents),
     legibility: ["buena","parcial","ilegible"].includes(o.legibility) ? o.legibility : "parcial" };
 }
+// Diccionario de productos y marcas comunes en México (texto en mayúsculas y sin acentos). El orden importa: gana la primera coincidencia.
 const KEYWORDS = [
-  ["antojos",/SABRITAS|DORITOS|RUFFLES|COCA|PEPSI|REFRESCO|GALLETA|GANSITO|CHOCOLATE|DULCE|PALETA|ENERGIZ|BOTANA|PAPAS|TAKIS|CHETOS|HELADO/i],
-  ["despensa",/LECHE|PAN\b|BIMBO|HUEVO|TORTILLA|ARROZ|FRIJOL|ACEITE|ATUN|CAFE|AZUCAR|FRUTA|JAMON|QUESO|YOGUR|POLLO|CARNE|MANZANA|PLATANO|JITOMATE/i],
-  ["salud",/PARACETAMOL|IBUPROFENO|ASPIRINA|FARMACIA|JARABE|ANTIBIOT|CURITA|VITAMINA/i],
-  ["hogar",/PAPEL HIG|DETERGENTE|CLORO|SUAVITEL|JABON TRASTE|ESCOBA|FOCO|SERVILLETA/i],
-  ["cuidado_personal",/SHAMPOO|JABON|DESODORANTE|PASTA DENT|CEPILLO|CREMA|RASTRILLO|TOALLA FEM/i],
-  ["servicios",/RECARGA|TELCEL|MOVISTAR|AT&T|CFE|TELMEX|IZZI|TOTALPLAY/i],
-  ["transporte",/GASOLINA|MAGNA|PREMIUM|DIESEL|UBER|DIDI|PASAJE|METRO|ESTACIONAMIENTO|CASETA/i],
-  ["entretenimiento",/CINE|BOLETO|SPOTIFY|NETFLIX|STEAM|XBOX|PLAYSTATION|CERVEZA/i],
-  ["educacion",/CUADERNO|LAPIZ|PLUMA|LIBRO|COPIAS|IMPRESION|COLEGIATURA/i],
-  ["ropa",/CAMISA|PLAYERA|PANTALON|TENIS|ZAPATO|CALCETIN|SUDADERA/i],
+  ["salud",/PARACETAMOL|TEMPRA|TYLENOL|IBUPROFENO|ADVIL|ASPIRINA|NAPROXENO|AMOXICILINA|LORATADINA|OMEPRAZOL|DICLOFENACO|ANTIBIOT|JARABE|CURITA|GASAS|VENDA|ALCOHOL ETIL|VITAMINA|SUERO|ELECTROLIT|PEDIALYTE|CONDON|PRESERVATIVO|PRUEBA DE|CONSULTA|FARMACIA/],
+  ["transporte",/GASOLINA|MAGNA|PREMIUM|DIESEL|LITROS|UBER(?! EATS)|DIDI(?! FOOD)|INDRIVE|TAXI|PASAJE|CAMION|METRO|TRANSPORTE|ESTACIONAMIENTO|CASETA|PEAJE|LLANTA|ACEITE (MOTOR|\d+W)/],
+  ["comida_fuera",/COMBO|HAMBURGUESA|PIZZA|TACOS?\b|ORDEN DE|TORTA\b|BURRITO|QUESADILLA|SUSHI|ALITAS|BONELESS|LATTE|CAPUCCINO|CAPPUCCINO|FRAPPE|AMERICANO|MOKA|MOCHA|PROPINA|DOMICILIO|RAPPI|DIDI FOOD|UBER EATS|AGUA FRESCA/],
+  ["antojos",/SABRITAS|DORITOS|RUFFLES|CHEETOS|CHETOS|TAKIS|FRITOS|TOSTITOS|PAPAS (FRITAS|ADOBADAS|SAL)|SABRITONES|BOTANA|CACAHUATE|COCA|PEPSI|SPRITE|FANTA|MANZANITA|SQUIRT|REFRESCO|JARRITOS|BOING|GATORADE|POWERADE|MONSTER|RED BULL|ENERGIZ|VOLT\b|GALLETA|EMPERADOR|OREO|PRINCIPE|GANSITO|PINGUINOS|MANTECADAS?|CHOCOLATE|CARLOS V|KINDER|SNICKERS|MILKY WAY|DULCES?\b|PALETA|CHICLE|TRIDENT|MAZAPAN|HELADO|NIEVE|PAN DULCE|DONAS?\b|CHURRO|MARUCHAN|NISSIN|SOPA INSTANTANEA/],
+  ["despensa",/LECHE|LALA|ALPURA|YOGU?R|DANONE|YOPLAIT|QUESO|MANTEQUILLA|HUEVO|PAN\b|BIMBO|TELERA|BOLILLO|TORTILLA|HARINA|ARROZ|FRIJOL|LENTEJA|PASTA\b|SPAGUETTI|SOPA\b|ACEITE|ATUN|SARDINA|CAFE|NESCAFE|AZUCAR|SAL\b|CONSOME|KNORR|MAYONESA|MCCORMICK|CATSUP|SALSA|CHILES?\b|JITOMATE|TOMATE|CEBOLLA|PAPAS?\b|AGUACATE|LIMON|MANZANA|PLATANO|NARANJA|FRUTA|VERDURA|LECHUGA|ZANAHORIA|POLLO|PECHUGA|CARNE|RES\b|CERDO|JAMON|SALCHICHA|CHORIZO|PESCADO|CEREAL|AVENA|ZUCARITAS|CORN FLAKES|AGUA\b|GARRAFON|CIEL|BONAFONT|EPURA|GALLETAS? SALADAS/],
+  ["hogar",/PAPEL HIG|PETALO|REGIO|KLEENEX|SERVILLETA|DETERGENTE|ARIEL|\bROMA\b|FOCA|CLORO|CLORALEX|SUAVITEL|DOWNY|FABULOSO|PINOL|LAVATRASTES|SALVO|AXION|ESPONJA|ESCOBA|TRAPEADOR|BOLSA (DE )?BASURA|FOCO|PILAS|INSECTICIDA|RAID|ALUMINIO/],
+  ["cuidado_personal",/SHAMPOO|ACONDICIONADOR|JABON|DESODORANTE|PASTA DENT|COLGATE|CEPILLO DENT|ENJUAGUE|CREMA (CORP|FACIAL|HUMECT)|NIVEA|DOVE|REXONA|GILLETTE|RASTRILLO|TOALLA FEM|KOTEX|SALVA ?SLIP|MAQUILLAJE|LABIAL|PERFUME|GEL\b|CORTE DE CABELLO|BARBERIA/],
+  ["servicios",/RECARGA|TIEMPO AIRE|TELCEL|MOVISTAR|AT ?& ?T|CFE|LUZ\b|AGUA POTABLE|TELMEX|IZZI|TOTALPLAY|MEGACABLE|INTERNET|GAS LP|CILINDRO/],
+  ["entretenimiento",/CINE|BOLETO|ENTRADA|PALOMITAS|SPOTIFY|NETFLIX|DISNEY|HBO|PRIME VIDEO|YOUTUBE|STEAM|XBOX|PLAYSTATION|NINTENDO|VIDEOJUEGO|CERVEZA|CORONA|MODELO|TECATE|INDIO|HEINEKEN|MICHELADA|TEQUILA|VODKA|\bRON\b|CONCIERTO|BILLAR|BOLICHE/],
+  ["educacion",/CUADERNO|LIBRETA|LAPIZ|LAPICERO|PLUMA|BOLIGRAFO|MARCADOR|RESALTADOR|BORRADOR|SACAPUNTAS|REGLA\b|CALCULADORA|MOCHILA|LIBRO|COPIAS|IMPRESION|ENGARGOLADO|COLEGIATURA|INSCRIPCION|CURSO|MEMORIA USB/],
+  ["ropa",/CAMISA|PLAYERA|BLUSA|PANTALON|JEANS|SHORTS?\b|FALDA|VESTIDO|SUDADERA|CHAMARRA|TENIS|ZAPATO|SANDALIA|CALCETIN|BOXER|BRASIER|GORRA|CINTURON/],
 ];
+// Si el producto no se reconoce, la tienda da una pista de la categoría
+const MERCHANT_CATS = [
+  [/FARMACIA|SIMILARES|BENAVIDES|DEL AHORRO|SAN PABLO|GUADALAJARA/, "salud"],
+  [/PEMEX|GASOLINER|\bG500\b|\bARCO\b|SHELL|MOBIL|\bBP\b|OXXO GAS/, "transporte"],
+  [/CINEPOLIS|CINEMEX|TICKETMASTER/, "entretenimiento"],
+  [/STARBUCKS|ITALIAN COFFEE|CAFETERIA|TAQUERIA|RESTAURA|PIZZ|BURGER|KFC|MC ?DONALD|DOMINO|LITTLE CAESARS|CARL ?S JR|SUBWAY|SUSHI|WINGS|TORTAS/, "comida_fuera"],
+  [/PAPELERIA|OFFICE DEPOT|OFFICEMAX|LUMEN|LIBRERIA|GANDHI/, "educacion"],
+  [/LIVERPOOL|COPPEL|\bC ?& ?A\b|ZARA|BERSHKA|PULL ?& ?BEAR|SHASA|SUBURBIA|PRICE SHOES|INNOVASPORT|NIKE|ADIDAS/, "ropa"],
+  [/TELCEL|MOVISTAR|\bAT ?& ?T\b|\bCFE\b|TELMEX|IZZI|TOTALPLAY|MEGACABLE/, "servicios"],
+  [/HOME DEPOT|COMEX|FERRETER/, "hogar"],
+  [/OXXO|7 ?ELEVEN|SEVEN|KIOSKO|CIRCLE K|\bEXTRA\b|MINISUPER|TIENDITA/, "antojos"],
+  [/WALMART|WAL MART|SORIANA|CHEDRAUI|AURRERA|CALIMAX|\bLEY\b|\bHEB\b|H E B|COSTCO|SAM ?S|LA COMER|CITY MARKET|SUPER|MERCADO|ABARROTES/, "despensa"],
+];
+const normName = s => String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z0-9& ]+/g, " ").replace(/\s+/g, " ").trim();
+const memKey = s => normName(s).replace(/\d+/g, " ").replace(/\s+/g, " ").trim();
+function classifyItem(name, merchant){
+  const mem = S.catMemory?.[memKey(name)]; if (mem && CATS[mem]) return { cat: mem, conf: .9, how:"memoria" };
+  const n = normName(name);
+  for (const [c, re] of KEYWORDS) if (re.test(n)) return { cat: c, conf: .7, how:"diccionario" };
+  const m = normName(merchant);
+  for (const [re, c] of MERCHANT_CATS) if (re.test(m)) return { cat: c, conf: .5, how:"tienda" };
+  return { cat:"otros", conf:.2, how:"ninguno" };
+}
+function ticketDate(text){
+  const m = String(text).match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/); if (!m) return null;
+  let [, dd, mm, yy] = m.map(Number); if (yy < 100) yy += 2000;
+  const d = new Date(yy, mm - 1, dd, 12); const now = Date.now();
+  return d.getMonth() === mm - 1 && d.getTime() <= now + 864e5 && d.getTime() > now - 400 * 864e5 ? d : null;
+}
 function heuristic(text){
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  const NON = /\b(SUB\s?TOTAL|TOTAL|IVA|CAMBIO|EFECTIVO|TARJETA|SU PAGO|PAGO|RFC|FOLIO|CAJA|ARTICULOS|DESCUENTO)\b/i;
-  const PRICE = /^(?:(\d{1,3})\s+)?(.+?)\s+([-−]?)\s*\$?\s*(\d{1,6}[.,]\d{2})\s*$/;
+  const lines = text.split(/\r?\n/).map(l=>l.replace(/\s+/g," ").trim()).filter(Boolean);
+  const NON = /\b(SUB\s?TOTAL|TOTAL|IVA|I\.V\.A|CAMBIO|EFECTIVO|TARJETA|SU PAGO|PAGO|RFC|FOLIO|CAJA|CAJERO|ARTICULOS|DESCUENTO|TRANSACCION|AUTORIZACION)\b/i;
+  const PRICE = /^(?:(\d{1,3})\s+)?(.+?)\s+([-−]?)\s*\$?\s*(\d{1,6}[.,]\d{2})\s*([-−])?\s*[A-Z]?$/i;
+  const merchant = lines.slice(0, 5).find(l => /[A-ZÁÉÍÓÚÑ]{3,}/i.test(l) && !/RFC|SUC|CAJA|FOLIO|TICKET|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|^TEL/i.test(l)) || lines[0] || "";
   const items = [];
   for (const l of lines){
     if (NON.test(l)) continue; const m = l.match(PRICE); if (!m) continue;
-    const name = m[2].replace(/\s+/g," ").trim(); let cat="otros", conf=0.2;
-    for (const [c,re] of KEYWORDS) if (re.test(name)) { cat=c; conf=0.65; break; }
-    items.push({raw:l, name, qty:m[1]?+m[1]:1, total:(m[3] ? -1 : 1) * parseMoney(m[4]), cat, conf});
+    const name = m[2].replace(/\s+/g," ").trim(); if (!/[A-ZÁÉÍÓÚÑ]{2,}/i.test(name)) continue;
+    const { cat, conf } = classifyItem(name, merchant);
+    items.push({raw:l, name, qty:m[1]?+m[1]:1, total:(m[3] || m[5] ? -1 : 1) * parseMoney(m[4]), cat, conf});
   }
-  const find = re => { const h = lines.find(l=>re.test(l))?.match(/(\d{1,6}[.,]\d{2})\s*$/); return h ? parseMoney(h[1]) : null; };
-  return { merchant: lines[0] || "", at:new Date().toISOString(), items, tax:find(/^IVA/i), discount:find(/^DESCUENTO/i), total:find(/^TOTAL\b/i), legibility: items.length ? "parcial" : "ilegible" };
+  const find = re => { const h = lines.find(l=>re.test(l))?.match(/(\d{1,6}[.,]\d{2})\s*[-−]?\s*$/); return h ? parseMoney(h[1]) : null; };
+  const at = ticketDate(text), total = find(/^(IMPORTE )?TOTAL( A PAGAR)?\b/i), tax = find(/^I\.?V\.?A\b/i), discount = find(/^DESCUENTO/i);
+  const sum = items.reduce((x,i) => x + i.total, 0) - (discount || 0);
+  const cuadra = total != null && (Math.abs(sum - total) <= 100 || Math.abs(sum + (tax || 0) - total) <= 100);
+  return { merchant, at:(at || new Date()).toISOString(), items, tax, discount, total, legibility: !items.length ? "ilegible" : cuadra ? "buena" : "parcial" };
 }
 function ocrQuality(text){
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean); if (!lines.length) return 0;
@@ -570,7 +610,11 @@ function spreadAmount(items, amount){
   pos.reduce((a,b)=>b.total>a.total?b:a).total += amount - used;
 }
 function buildDraft(ex, engine){
-  const items = ex.items.map(it => ({...it, id:uid(), review: it.cat==="otros" || it.conf < 0.6}));
+  const items = ex.items.map(it => {
+    const mem = S.catMemory?.[memKey(it.name)] || S.catMemory?.[memKey(it.raw)];
+    const fixed = mem && CATS[mem] ? { cat: mem, conf: Math.max(it.conf || 0, .9) } : {};
+    const o = { ...it, ...fixed, id:uid() }; o.review = o.cat === "otros" || o.conf < 0.6; return o;
+  });
   const sum = () => items.reduce((a,i)=>a+i.total,0), near = (a,b) => Math.abs(a-b) <= 100;
   const notes = [], warnings = [];
   if (ex.total != null && items.length && !near(sum(), ex.total)) {
@@ -584,6 +628,7 @@ function buildDraft(ex, engine){
     }
   }
   if (engine === "basic") warnings.push("Se usó la lectura básica sin IA. Revisa las categorías marcadas.");
+  if (engine === "ocr") notes.push("Leí la foto en tu teléfono, sin internet ni IA, y clasifiqué cada producto con mi diccionario. Revisa lo marcado en amarillo: lo que corrijas lo recuerdo para la próxima.");
   if (ex.legibility === "parcial" && engine !== "basic") warnings.push("Parte del ticket no se leyó bien. Puede faltar algún artículo.");
   if (ex.total == null) warnings.push("No encontré el total del ticket. Si lo ves, escríbelo abajo para comprobar que todo cuadre.");
   if (items.some(i => i.total < 0)) notes.push("Los descuentos y devoluciones aparecen en negativo y restan a su categoría.");
@@ -608,6 +653,8 @@ const AI_ERRORS = {
   overloaded:"El servicio de IA está saturado. Inténtalo en un minuto.",
   offline:"Sin conexión a internet. Conéctate para leer el ticket con IA, o regístralo a mano.",
   invalid_json:"No pude interpretar el ticket. Toma otra foto más de cerca y con buena luz.",
+  ocr_fail:"No pude leer el texto de la foto. Toma otra más de cerca, con buena luz y el ticket bien estirado.",
+  no_ocr:"Este teléfono no pudo usar el lector de texto. Pega el texto del ticket o regístralo a mano.",
 };
 const blobToBase64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); });
 function parseJsonLoose(t){
@@ -650,7 +697,7 @@ async function runScan({file, text}){
   try {
     let ex = null, engine = "ai";
     if (text && ocrQuality(text) < 0.35) { ui.scan = {status:"unreadable", preview}; return render(); }
-    if (getKey()) {
+    if (getKey() && navigator.onLine !== false) {
       ui.ctl = new AbortController();
       const img = file ? await blobToBase64(await imageToBlob(file)) : null;
       const prompt = aiPrompt(text||"");
@@ -659,10 +706,16 @@ async function runScan({file, text}){
         if (needsStronger(ex)) { try { ex = normalizeAI(await callClaude(MODEL_STRONG, prompt, img, ui.ctl.signal)); } catch (e) { if (e?.code === "cancelled") throw e; } }
       } catch (e) {
         if (e?.code === "cancelled") { ui.scan = null; return render(); }
-        if (file) throw e;
+        if (file && !(e?.code === "offline" && window.AndroidBridge?.ocr)) throw e;
         ex = null;
       }
-    } else if (file) { throw { code:"no_key" }; }
+    }
+    if (!ex && file) {
+      // Sin clave o sin internet: el teléfono lee el texto (ML Kit) y Merino clasifica cada producto
+      const read = await deviceOCR(file);
+      if (ocrQuality(read) < 0.35) { ui.scan = {status:"unreadable", preview}; return render(); }
+      ex = heuristic(read); engine = "ocr";
+    }
     if (!ex) { ex = heuristic(text||""); engine = "basic"; }
     if (ex.legibility === "ilegible" || !ex.items.length) { ui.scan = {status:"unreadable", preview}; return render(); }
     ui.draft = buildDraft(ex, engine);
@@ -686,6 +739,9 @@ function confirmDraft(){
     items:d.items.map(i=>({name:i.name, raw:i.raw, qty:i.qty, total:i.total, cat:i.cat, conf:i.conf})), hasPhoto: hadPhoto || !!(d.photo && S.keepPhotos) };
   if (d.fixedId) { rec.fixedId = d.fixedId; rec.month = d.month; ((S.fixedPaid ||= {})[d.month] ||= {})[d.fixedId] = id; }
   S.receipts.push(rec);
+  S.catMemory ||= {};
+  for (const i of rec.items) { const k = memKey(i.name); if (k.length >= 3 && i.total > 0) S.catMemory[k] = i.cat; }
+  { const ks = Object.keys(S.catMemory); if (ks.length > 600) for (const k of ks.slice(0, ks.length - 600)) delete S.catMemory[k]; }
   const acc = S.accounts.find(a=>a.id===d.accountId); if (acc) acc.balance = (acc.balance||0) - total;
   if (d.photo && S.keepPhotos) PhotoDB.put(id, d.photo).catch(() => { rec.hasPhoto = hadPhoto; });
   let msg = editing ? "Cambios guardados" : "Gasto registrado · +10 XP";
@@ -719,7 +775,7 @@ function loadDemo(){
   s.profile = {name:"Ana", student:true, level:"Universidad", work:"Medio tiempo", savingsPct:15, tone:S.profile?.tone || "casual",
     incomes:[{id:uid(), name:"Beca", amt:250000, freq:"mensual"}, {id:uid(), name:"Sueldo", amt:160000, freq:"quincenal"}]};
   s.goals = [{id:uid(), name:"Laptop nueva", target:1200000}, {id:uid(), name:"Viaje de fin de semestre", target:500000}];
-  s.fixed = [{id:uid(),name:"Renta (parte)",amt:180000,cat:"hogar"},{id:uid(),name:"Transporte",amt:60000,cat:"transporte"},{id:uid(),name:"Plan de celular",amt:29900,cat:"servicios"}];
+  s.fixed = [{id:uid(),name:"Renta (parte)",amt:180000,cat:"hogar",dueDay:1},{id:uid(),name:"Transporte",amt:60000,cat:"transporte",dueDay:15},{id:uid(),name:"Plan de celular",amt:29900,cat:"servicios",dueDay:Math.min(28, new Date().getDate()+2)}];
   s.accounts = [{id:uid(),name:"Débito nómina",type:"debito",balance:420000},{id:uid(),name:"Tarjeta de beca",type:"beca",balance:150000},{id:uid(),name:"Efectivo",type:"efectivo",balance:35000}];
   s.goal = {name:"Laptop nueva", target:1200000};
   const pool = [
@@ -1362,11 +1418,13 @@ const MASCOT_LINES = {
   review_ok:{c:"Todo cuadró. Solo dale guardar.", d:"Identifiqué todos los artículos. Revisa y guarda."},
   review_flag:{c:"Hay {n} que no reconocí. ¿Me echas la mano con la categoría?", d:"Confirma la categoría de {n}: no los reconocí con seguridad."},
   review_diff:{c:"Algo no cuadra con el total del ticket. Elige cómo arreglarlo y seguimos.", d:"La suma no coincide con el total del ticket. Resuelve la diferencia para guardar."},
+  fixed_due:{c:"Ojo: tu pago de {n} ({x}) {cuando}. Ya lo tengo apartado de lo que puedes gastar.", d:"{n} ({x}) {cuando}. Ya está apartado de tu dinero disponible."},
+  fixed_late:{c:"Tu pago de {n} {cuando}. ¿Ya lo pagaste? Márcalo para que tu saldo cuadre.", d:"{n} {cuando}. Si ya lo pagaste, márcalo como pagado."},
   history_empty:{c:"Aquí van a vivir tus movimientos. Por ahora, puro silencio.", d:"Aún no hay movimientos. Escanea tu primer ticket."},
   pig_cheer:{c:"¡Eso! Una moneda más al cochinito.", d:"Aporte registrado. Tu cochinito sigue creciendo."},
   pig_done:{c:"¡Meta cumplida! Hora de elegir la siguiente.", d:"Meta cumplida. Puedes agregar otra meta aquí mismo."},
   pig_keep:{c:"Mientras más ahorras en el mes, más esponjada se pone mi lana. Llevas {x} este mes.", d:"Tu ahorro del mes se refleja en mi lana. Llevas {x} este mes."},
-  chat_hi:{c:"¡Pregúntame lo que quieras de dinero! Uso los datos de tu app para darte respuestas a tu medida.", d:"Hazme preguntas sobre presupuesto, ahorro o deudas. Uso los datos de tu app para responder."},
+  chat_hi:{c:"¡Pregúntame lo que quieras de dinero! Uso los datos de tu app para darte respuestas a tu medida. Toca un tema para empezar.", d:"Hazme preguntas sobre presupuesto, ahorro o deudas. Uso los datos de tu app para responder."},
 };
 function say(key, vars = {}){
   const l = MASCOT_LINES[key]; if (!l) return "";
@@ -1391,7 +1449,59 @@ function mascotBody(){
 IC.chat = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg>';
 
 // ───────────────────────── Chat con Merino ─────────────────────────
-const CHAT_SUGGEST = ["¿En qué gasto más este mes?", "¿Cómo armo un presupuesto si me pagan por quincena?", "¿Cómo llego más rápido a mi meta?", "¿Me conviene usar tarjeta de crédito?"];
+const CHAT_SUGGEST = ["¿En qué gasto más este mes?", "¿Cuánto puedo gastar?", "¿Cómo reparto mi quincena?", "¿Cuánto me falta para mi meta?", "¿Qué es un fondo de emergencia?", "¿Cómo uso bien mi tarjeta de crédito?"];
+// Respuestas sin IA: reconoce la intención por palabras clave y contesta con los datos de la app
+function offlineAnswer(q){
+  const T = " " + normName(q) + " ", P = S.profile, has = re => re.test(T);
+  const m = spentBy("month"), cats = Object.entries(m.by).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  const mi = monthlyIn(), ms = monthlySaveTarget();
+  if (has(/ (HOLA|BUENAS|QUE ONDA|HEY|BUEN DIA|QUE TAL) /)) return `¡Hola, ${P.name || ""}! Puedo decirte en qué gastas más, cuánto puedes gastar, cómo repartir tu quincena o cuánto te falta para tus metas. Elige un tema abajo o escríbeme.`;
+  if (has(/ GRACIAS /)) return "¡De nada! Aquí sigo para cuando quieras revisar tus números.";
+  if (has(/PUEDO GASTAR|DISPONIBLE|CUANTO TENGO|ME QUEDA|MI SALDO|DINERO TENGO/)) {
+    const cs = canSpend();
+    return `Este mes puedes gastar ${fmt0(cs)}.\n- Saldo en tus cuentas: ${fmt0(cashBalance())}\n- Gastos fijos por pagar: ${fmt0(fixedPendingTotal())}${creditDebt() ? `\n- Deuda de tarjeta: ${fmt0(creditDebt())}` : ""}\n- Ahorro del mes por apartar: ${fmt0(savePending())}` + (cs < 0 ? "\nTus compromisos superan tu saldo: antes de gastar más, registra ingresos que ya recibiste o revisa tus pagos." : "");
+  }
+  if (has(/GASTO MAS|EN QUE GASTO|SE ME VA|SE VA MI|CATEGORIA|EN QUE SE VA|MAYOR GASTO/)) {
+    if (!cats.length) return "Todavía no tienes gastos este mes. Escanea tus tickets y te digo en qué se te va.";
+    const tot = cats.reduce((a,[,v]) => a+v, 0);
+    return `Este mes llevas ${fmt0(tot)} en gastos. Donde más gastas:\n` + cats.slice(0, 3).map(([c,v]) => `- ${CATS[c].n}: ${fmt0(v)} (${Math.round(v/tot*100)} %)`).join("\n") + `\nSi quieres bajarle a ${CATS[cats[0][0]].n.toLowerCase()}, ponle un presupuesto en Perfil y te aviso cuando vayas en 80 %.`;
+  }
+  if (has(/ANTOJO|IMPULS|HORMIGA|CAPRICHO/)) {
+    const ant = Math.max(0, m.by.antojos || 0), tot = Math.max(1, cats.reduce((a,[,v]) => a+v, 0));
+    return `Este mes llevas ${fmt0(ant)} en antojos (${Math.round(ant/tot*100)} % de tus gastos). Tres trucos que funcionan:\n- Espera 24 horas antes de una compra que no tenías planeada.\n- Lleva tu botella de agua y un snack de casa.\n- Cuando te contengas, regístralo como "antojo evitado" en el cochinito: vale más XP.`;
+  }
+  if (has(/QUINCENA|PRESUPUESTO|50 30 20|ORGANIZ|REPARTIR|REPARTO|DISTRIBU/)) {
+    if (!mi) return "Primero registra tus ingresos en Perfil (con cada cuánto te pagan) y te armo el reparto. Una regla sencilla es 50/30/20: 50 % necesidades, 30 % gustos y 20 % ahorro.";
+    const q2 = (P.incomes || []).some(i => i.freq === "quincenal"), base = q2 ? mi / 2 : mi, lbl = q2 ? "cada quincena" : "al mes";
+    return `Una regla sencilla es 50/30/20. Con tus ingresos (${fmt0(base)} ${lbl}) quedaría así:\n- Necesidades (50 %): ${fmt0(base*.5)}\n- Gustos (30 %): ${fmt0(base*.3)}\n- Ahorro (20 %): ${fmt0(base*.2)}\nHoy tus gastos fijos son ${fmt0(fixedTotal())} al mes y tu plan de ahorro es ${fmt0(ms)}.` + (q2 ? " Paga los fijos que vencen antes del día 15 con la primera quincena y los demás con la segunda." : "");
+  }
+  if (has(/META|AHORR|COCHINITO|LLEGAR|JUNTAR|FALTA/)) {
+    const gs = goals(); if (!gs.length) return "Aún no tienes metas. Crea una en Cochinito y te digo cuánto te falta y en cuánto tiempo llegas.";
+    const lines = gs.map(g => { const left = Math.max(0, g.target - savedFor(g.id)); return `- ${g.name}: llevas ${fmt0(savedFor(g.id))} de ${fmt0(g.target)}${left ? `, te faltan ${fmt0(left)}` : ", ¡ya la cumpliste!"}`; });
+    const left = gs.reduce((a,g) => a + Math.max(0, g.target - savedFor(g.id)), 0), months = ms ? Math.ceil(left / ms) : 0;
+    return lines.join("\n") + (ms && left ? `\nAhorrando ${fmt0(ms)} al mes las completas en unos ${months} ${months === 1 ? "mes" : "meses"}. Para llegar antes, sube tu porcentaje de ahorro en Perfil o activa el redondeo en cada ticket.` : "");
+  }
+  if (has(/EMERGENCIA|IMPREVISTO|COLCHON|COLCHONCITO/)) {
+    const base = fixedTotal() || Math.round(mi * .5);
+    return `Un fondo de emergencia es dinero apartado solo para imprevistos: una consulta médica, una reparación o quedarte sin ingresos un tiempo. Lo recomendable es juntar de 3 a 6 meses de tus gastos fijos. En tu caso serían entre ${fmt0(base*3)} y ${fmt0(base*6)}. Puedes crearlo como una meta aparte en el cochinito.`;
+  }
+  if (has(/TARJETA|CREDITO|DEUDA|INTERES|PAGO MINIMO|MESES SIN|CORTE/)) {
+    const d = creditDebt();
+    return `Claves para usar bien una tarjeta de crédito:\n- Paga el total antes de la fecha límite; si pagas solo el mínimo te cobran intereses muy altos.\n- La fecha de corte cierra tus compras del mes; la fecha límite es unos días después.\n- Usa los meses sin intereses solo si ya tenías el dinero planeado.\n- Procura no usar más del 30 % de tu límite.` + (d ? `\nHoy debes ${fmt0(d)} en tus tarjetas; ya lo estoy apartando de lo que puedes gastar.` : "") + "\nNo soy asesor financiero: para dudas sobre un crédito en particular consulta a tu banco o a la CONDUSEF.";
+  }
+  if (has(/INVERT|CETES|INVERSION|RENDIMIENTO|AFORE|BOLSA DE VALORES|INTERESES GANAR/)) return "Cuando ya tengas tu fondo de emergencia, puedes poner a trabajar tu ahorro. Una opción muy usada en México son los CETES: deuda del gobierno que se compra en cetesdirecto.com desde $100, con bajo riesgo. Antes de invertir, compara rendimientos, plazos y comisiones. No soy asesor financiero, así que no te recomiendo un producto específico; la CONDUSEF tiene guías oficiales para comparar.";
+  if (has(/FIJO|RENTA|MIS PAGOS|VENCE|PAGAR /)) {
+    if (!S.fixed.length) return "No tienes gastos fijos registrados. Agrégalos en Perfil con su día de pago y te aviso antes de que venzan.";
+    const paid = paidFixedMap();
+    return "Tus gastos fijos de este mes:\n" + S.fixed.map(f => `- ${f.name}: ${fmt0(f.amt)}, ${paid[f.id] ? "ya pagado" : dueInfo(f).txt.toLowerCase()}`).join("\n");
+  }
+  if (has(/INGRESO|GANO|SUELDO|BECA|ME ENTRA|ME PAGAN|COBRO/)) {
+    if (!(P.incomes || []).length) return "No tienes ingresos registrados. Agrégalos en Perfil con cada cuánto te pagan.";
+    return `Te entran unos ${fmt0(mi)} al mes:\n` + P.incomes.map(i => `- ${i.name || "Ingreso"}: ${fmt0(i.amt)} ${FREQS[i.freq]?.n.toLowerCase() || ""}`).join("\n") + `\nEste mes ya registraste ${fmt0(incomeThisMonth())} recibidos.`;
+  }
+  return "Esa todavía no la sé responder sin IA. Puedo ayudarte con estos temas: en qué gastas más, cuánto puedes gastar, cómo repartir tu quincena, tus metas, fondo de emergencia, tarjetas de crédito o tus pagos fijos.";
+}
+const aiChatOn = () => ui.ai === "on" || (typeof getKey === "function" && !!getKey());
 const CHAT_ERRORS = {
   not_granted:"No diste permiso para usar Claude en esta app. Puedes permitirlo y volver a preguntar.",
   rate_limited:"Hiciste muchas preguntas seguidas. Espera un momento y vuelve a intentar.",
@@ -1411,7 +1521,7 @@ function financeContext(){
     `Ingresos esperados: ${(P.incomes || []).map(i => `${i.name || "Ingreso"} ${fmt(i.amt)} ${FREQS[i.freq]?.n.toLowerCase() || ""}`).join(", ") || "sin registrar"} (aprox. ${fmt(monthlyIn())} al mes)`,
     `Ingresos ya recibidos este mes: ${fmt(incomeThisMonth())}`,
     `Saldo real en cuentas: ${fmt(cashBalance())}; deuda en tarjetas de crédito: ${fmt(creditDebt())}`,
-    `Gastos fijos: ${S.fixed.map(f => `${f.name} ${fmt(f.amt)}${paidFixedMap()[f.id] ? " (ya pagado este mes)" : " (pendiente)"}`).join(", ") || "ninguno"}`,
+    `Gastos fijos: ${S.fixed.map(f => `${f.name} ${fmt(f.amt)}${f.dueDay ? ", se paga el día " + f.dueDay : ""}${paidFixedMap()[f.id] ? " (ya pagado este mes)" : " (pendiente)"}`).join(", ") || "ninguno"}`,
     `Puede gastar este mes (saldo menos fijos pendientes, deudas y ahorro por apartar): ${fmt(canSpend())}`,
     `Gasto del mes por categoría: ${cats || "sin gastos registrados"}`,
     `Presupuestos por categoría: ${Object.entries(S.budgets || {}).filter(([,v]) => v > 0).map(([c,v]) => `${CATS[c]?.n} ${fmt(v)}`).join(", ") || "ninguno"}`,
@@ -1462,8 +1572,14 @@ async function sendChat(q){
     }});
     S.chat.push({ role:"assistant", content: String(text || "").trim() || "No tengo una respuesta para eso. ¿Me lo preguntas de otra forma?", at:new Date().toISOString() });
   } catch (e) {
-    if (e?.text) S.chat.push({ role:"assistant", content: e.text, at:new Date().toISOString() });
-    if (e?.code !== "cancelled") ui.chatErr = CHAT_ERRORS[e?.code] || "No pude responder en este momento. Intenta otra vez.";
+    if (["unavailable","no_key","not_granted","offline"].includes(e?.code)) {
+      // Sin IA disponible: Merino contesta con sus respuestas programadas
+      S.chat.push({ role:"assistant", content: offlineAnswer(q), offline:true, at:new Date().toISOString() });
+      if (e.code === "offline") ui.chatErr = "Sin internet: te respondí en modo rápido.";
+    } else {
+      if (e?.text) S.chat.push({ role:"assistant", content: e.text, at:new Date().toISOString() });
+      if (e?.code !== "cancelled") ui.chatErr = CHAT_ERRORS[e?.code] || "No pude responder en este momento. Intenta otra vez.";
+    }
   } finally {
     ui.chatBusy = false; save(); render();
   }
@@ -1471,11 +1587,12 @@ async function sendChat(q){
 function viewChat(){
   const msgs = S.chat || [];
   return `<div class="top"><div class="row" style="gap:10px;min-width:0">${S.mascot !== false ? `<div class="say-av" style="width:48px;flex:none">${mascotImg("feliz")}</div>` : ""}
-      <div style="min-width:0"><h1 style="font-size:24px">Pregúntale a Merino</h1><p class="small muted">Dudas de dinero, presupuesto y ahorro</p></div></div>
+      <div style="min-width:0"><h1 style="font-size:24px">Pregúntale a Merino</h1><p class="small muted">${aiChatOn() ? "Con IA · dudas de dinero, presupuesto y ahorro" : "Modo rápido sin IA · responde con tus datos"}</p></div></div>
     ${msgs.length ? `<button class="link small" data-act="clearchat">Borrar chat</button>` : ""}</div>
   <div class="chat" id="chat">
-    ${msgs.length ? msgs.map(m => `<div class="msg ${m.role === "user" ? "me" : "ai"}"><p>${esc(m.content)}</p></div>`).join("")
-      : `${mascotRow("saludo", say("chat_hi"), { size:"sm" })}<div class="chips">${CHAT_SUGGEST.map(q => `<button class="chip" data-act="ask" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`}
+    ${msgs.length ? msgs.map(m => `<div class="msg ${m.role === "user" ? "me" : "ai"}"><p>${esc(m.content)}</p>${m.offline ? `<span class="msg-tag">Respuesta rápida sin IA</span>` : ""}</div>`).join("")
+      : mascotRow("saludo", say("chat_hi"), { size:"sm" })}
+    ${!ui.chatBusy && (!msgs.length || msgs[msgs.length-1]?.offline) ? `<div class="chips">${CHAT_SUGGEST.map(q => `<button class="chip" data-act="ask" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
     ${ui.chatBusy ? `<div class="msg ai" id="msg-live"><p class="muted">Pensando…</p></div>` : ""}
     ${ui.chatErr ? `<p class="alert warn">${esc(ui.chatErr)}</p>` : ""}
   </div>
@@ -1494,6 +1611,20 @@ const PhotoDB = (() => {
   const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction("fotos", mode); const q = fn(t.objectStore("fotos")); t.oncomplete = () => res(q?.result); t.onerror = () => rej(t.error); }); };
   return { put: (id, blob) => run("readwrite", s => s.put(blob, id)), get: id => run("readonly", s => s.get(id)), del: id => run("readwrite", s => s.delete(id)) };
 })();
+
+// Pide al teléfono que lea el texto de la foto con ML Kit (sin internet). Solo existe dentro del APK.
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); });
+async function deviceOCR(file){
+  if (!window.AndroidBridge?.ocr) throw { code:"no_ocr" };
+  const b64 = await blobToB64(await imageToBlob(file, 2000));
+  return new Promise((res, rej) => {
+    const id = uid(), cbs = (window.__ocrCbs ||= {});
+    const timer = setTimeout(() => { delete cbs[id]; rej({ code:"ocr_fail" }); }, 40000);
+    cbs[id] = { res, rej, timer };
+    window.__ocrDone = (i, text, err) => { const c = cbs[i]; if (!c) return; clearTimeout(c.timer); delete cbs[i]; err ? c.rej({ code:"ocr_fail" }) : c.res(text || ""); };
+    try { window.AndroidBridge.ocr(b64, id); } catch { clearTimeout(timer); delete cbs[id]; rej({ code:"no_ocr" }); }
+  });
+}
 
 // ───────────────────────── Vistas ─────────────────────────
 function render(){
@@ -1583,7 +1714,8 @@ function viewOnboarding(){
   }
   if (st === 4) {
     body = `<div class="q">¿Cuáles son tus gastos fijos al mes?</div>
-      <p class="muted">Lo que pagas sí o sí: renta, transporte, celular, colegiatura.</p>
+      <p class="muted">Lo que pagas sí o sí: renta, transporte, celular, colegiatura. Pon el día en que pagas cada uno.</p>
+      <p class="small muted">No se descuenta nada de tus cuentas: solo lo aparto de lo que puedes gastar hasta que lo pagues. Si ya lo pagaste este mes, márcalo.</p>
       <div class="chips">${FIXED_SUGGESTIONS.filter(([n])=>!S.fixed.some(f=>f.name===n)).map(([n])=>`<button class="chip" data-act="addfixed" data-n="${n}">+ ${n}</button>`).join("")}</div>
       <div class="stack">${S.fixed.map(fixedEditRow).join("")}
       <button class="btn soft sm" data-act="addfixed" data-n="" style="align-self:flex-start">+ Otro gasto fijo</button></div>`;
@@ -1617,10 +1749,19 @@ function incomeEditRow(i){
     <button class="x" data-act="delincomesrc" data-id="${i.id}" aria-label="Quitar ${esc(i.name || "ingreso")}">×</button></div>`;
 }
 function fixedEditRow(f){
-  return `<div class="rowedit fixrow"><input id="fx-n-${f.id}" data-fixed="${f.id}" data-k="name" value="${esc(f.name)}" aria-label="Concepto" placeholder="Concepto">
+  return `<div class="fixedit"><div class="rowedit fixrow"><input id="fx-n-${f.id}" data-fixed="${f.id}" data-k="name" value="${esc(f.name)}" aria-label="Concepto" placeholder="Concepto">
     <input id="fx-a-${f.id}" inputmode="decimal" data-fixed="${f.id}" data-k="amt" value="${toInput(f.amt)}" placeholder="$0" aria-label="Monto mensual">
     <select class="typ" id="fx-c-${f.id}" data-fixed="${f.id}" data-k="cat" aria-label="Categoría">${catOptions(f.cat || "servicios")}</select>
-    <button class="x" data-act="delfixed" data-id="${f.id}" aria-label="Quitar ${esc(f.name || "gasto fijo")}">×</button></div>`;
+    <button class="x" data-act="delfixed" data-id="${f.id}" aria-label="Quitar ${esc(f.name || "gasto fijo")}">×</button></div>
+    <div class="fixmeta"><label class="row" style="gap:8px"><span class="small">Día de pago</span><select id="fx-d-${f.id}" data-fixed="${f.id}" data-k="dueDay" aria-label="Día de pago de ${esc(f.name || "este gasto")}">
+      <option value="">Sin fecha</option>${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${f.dueDay===i+1?"selected":""}>${i+1}</option>`).join("")}</select></label>
+      ${S.onboarded ? "" : `<label class="toggle small"><input type="checkbox" id="fx-p-${f.id}" data-fixed="${f.id}" data-k="paidNow" ${f.paidNow ? "checked" : ""}> Ya lo pagué este mes</label>`}</div></div>`;
+}
+function dueInfo(f){
+  if (!f.dueDay) return { days:null, txt:"Sin fecha de pago" };
+  const now = midnight(new Date()), y = now.getFullYear(), m = now.getMonth(), day = Math.min(f.dueDay, new Date(y, m + 1, 0).getDate());
+  const days = Math.round((new Date(y, m, day) - now) / 864e5);
+  return { days, day, txt: days < 0 ? `Venció el ${day}` : days === 0 ? "Vence hoy" : days === 1 ? "Vence mañana" : `Vence el ${day} · en ${days} días` };
 }
 function accountEditRow(a){
   return `<div class="rowedit acc"><input id="ac-n-${a.id}" data-acc="${a.id}" data-k="name" value="${esc(a.name)}" aria-label="Nombre" placeholder="Nombre">
@@ -1664,6 +1805,9 @@ function nudge(){
   const rest = savePending();
   const btn = (label, v) => `<button class="btn accent sm" data-act="go" data-v="${v}" style="align-self:flex-start">${label}</button>`;
   if (canSpend() < 0) return mascotRow("preocupado", say("overspend"), {cta: S.fixed.length ? `<button class="btn accent sm" data-act="openmonth" style="align-self:flex-start">Ver gastos fijos</button>` : ""});
+  const soon = fixedPending().map(f => ({ f, d: dueInfo(f) })).filter(x => x.d.days != null && x.d.days <= 3).sort((a,b) => a.d.days - b.d.days)[0];
+  if (soon) return mascotRow(soon.d.days < 0 ? "preocupado" : "piensa", say(soon.d.days < 0 ? "fixed_late" : "fixed_due", { n: soon.f.name, cuando: soon.d.txt.split(" · ")[0].toLowerCase(), x: fmt0(soon.f.amt) }),
+    { cta: `<button class="btn accent sm" data-act="openmonth" style="align-self:flex-start">Ver mis pagos</button>` });
   if (share > 0.15 && ant > 0) return mascotRow("preocupado", say("impulse", {p: Math.round(share*100)}), {cta: btn("Registrar un antojo evitado", "pig")});
   if (S.streak.last !== dayKey()) return mascotRow("piensa", S.streak.cur ? say("streak_risk", {n: S.streak.cur}) : say("streak_start"), {cta: btn("Escanear ticket", "scan")});
   if (rest > 0) return mascotRow("feliz", say("month_left", {x: fmt0(rest)}), {cta: btn("Aportar al cochinito", "pig")});
@@ -1682,7 +1826,7 @@ function spendCard(){
       <div class="row between"><span>Gastos fijos por pagar${n ? ` (${n})` : ""}</span><b class="money">${fp ? "−" + fmt(fp) : fmt(0)}</b></div>
       ${debt ? `<div class="row between"><span>Deuda en tarjetas de crédito</span><b class="money">−${fmt(debt)}</b></div>` : ""}
       <div class="row between"><span>Ahorro del mes por apartar</span><b class="money">${sp ? "−" + fmt(sp) : fmt(0)}</b></div>
-      <p class="small muted">Lo que ya está en el cochinito no cuenta como dinero disponible.</p></div>` : ""}
+      <p class="small muted">Los gastos fijos se apartan, no se descuentan de tu cuenta, hasta que los marques como pagados. Lo que ya está en el cochinito tampoco cuenta como disponible.</p></div>` : ""}
     ${cs < 0 ? `<p class="alert bad">Tus compromisos superan tu saldo por ${fmt(-cs)}. Registra los ingresos que ya recibiste o revisa tus gastos fijos.</p>` : ""}
   </div>`;
 }
@@ -1695,8 +1839,9 @@ function incomeForm(){
 function fixedList(){
   const paid = paidFixedMap();
   return `<div class="list">${S.fixed.map(f => { const c = CATS[f.cat] ? f.cat : "servicios";
-    return `<div class="li"><span class="dot" style="background:${CATS[c].c}"></span><div style="min-width:0"><div class="t">${esc(f.name || "Gasto fijo")}</div><div class="small muted">${fmt(f.amt)} · ${CATS[c].n}</div></div>
-      ${paid[f.id] ? `<span class="pill good">Pagado</span>` : `<button class="btn soft sm" data-act="payfixed" data-id="${f.id}">Pagar</button>`}</div>
+    const di = dueInfo(f), late = !paid[f.id] && di.days != null && di.days < 0;
+    return `<div class="li"><span class="dot" style="background:${CATS[c].c}"></span><div style="min-width:0"><div class="t">${esc(f.name || "Gasto fijo")}</div><div class="small ${late ? "" : "muted"}" style="${late ? "color:var(--warn)" : ""}">${fmt(f.amt)} · ${paid[f.id] ? "Pagado este mes" : di.txt}</div></div>
+      ${paid[f.id] ? `<span class="pill good">Pagado</span>` : `<div class="stack" style="gap:4px;align-items:flex-end"><button class="btn soft sm" data-act="payfixed" data-id="${f.id}">Pagar</button><button class="link small" data-act="markpaid" data-id="${f.id}">Ya estaba pagado</button></div>`}</div>
       ${ui.payFixed === f.id ? `<div class="inline-form"><label class="field"><span>¿Con qué cuenta pagaste ${esc(f.name)}?</span><select id="pf-acc">${accountOptions(f.accountId)}</select></label>
         <div class="row"><button class="btn accent sm" data-act="confirmpay" data-id="${f.id}">Confirmar pago de ${fmt(f.amt)}</button><button class="btn ghost sm" data-act="cancelpay">Cancelar</button></div></div>` : ""}`; }).join("")}</div>`;
 }
@@ -1806,7 +1951,7 @@ function viewScan(){
   if (sc?.status === "reading") return `${header("Escanear")}
     <div class="scanning">${sc.preview ? `<img src="${sc.preview}" alt="Tu ticket">` : `<p class="muted">Leyendo texto…</p>`}<div class="beam"></div></div>
     ${mascotRow("lee", say("scan_reading"))}
-    <div class="stack" style="align-items:center;text-align:center"><p class="small muted">La IA está identificando cada producto y su categoría. Suele tardar entre 5 y 30 segundos.</p>
+    <div class="stack" style="align-items:center;text-align:center"><p class="small muted">${getKey() ? "La IA está identificando cada producto y su categoría. Suele tardar entre 5 y 30 segundos." : "Estoy leyendo el ticket aquí en tu teléfono y clasificando cada producto. Tarda unos segundos."}</p>
     <button class="btn ghost sm" data-act="cancelscan">Cancelar</button></div>`;
   if (sc?.status === "unreadable") return `${header("Escanear")}
     ${mascotRow("preocupado", say("scan_unreadable"))}
@@ -1814,7 +1959,7 @@ function viewScan(){
     <ul class="small" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li>Ponlo sobre una superficie oscura y plana.</li><li>Busca buena luz, sin sombras ni flash directo.</li><li>Encuadra el ticket completo, del nombre de la tienda al total.</li><li>Si el ticket es térmico y está muy desgastado, regístralo a mano.</li></ul>
     <div class="row wrap"><button class="btn accent" data-act="pickphoto">Tomar otra foto</button><button class="btn ghost" data-act="manual">Registrar a mano</button></div></div>`;
   const err = sc?.status === "error" ? `<p class="alert bad">${esc(sc.error)}</p>` : "";
-  const aiNote = !getKey() ? `<div class="warnings"><p>Para leer fotos con IA agrega tu clave de la API de Claude. <button class="link" data-act="go" data-v="profile">Ir a Perfil</button></p></div>` : "";
+  const aiNote = !getKey() ? `<p class="small muted">Leo tus fotos aquí en el teléfono, sin internet. Para una lectura aún más precisa con IA, agrega tu clave en <button class="link" data-act="go" data-v="profile">Perfil</button> (opcional).</p>` : "";
   return `${header("Escanear")}${err}
     ${mascotRow("feliz", say("scan_idle"), {size:"sm"})}
     <label class="drop" for="photo">${IC.camera}<h3>Toma o sube la foto del ticket</h3><p class="small muted">Claude lee cada producto, su precio y le asigna categoría. Tú solo confirmas.</p>
@@ -1937,8 +2082,8 @@ function viewProfile(){
   ${fold("temporadas", "Temporadas", theme)}
   ${fold("fotos", "Fotos de tickets", `<label class="toggle"><input type="checkbox" id="p-photos" ${S.keepPhotos ? "checked" : ""}> Guardar la foto de cada ticket escaneado</label>
     <p class="small muted">Las fotos se guardan solo en este dispositivo y no se suben a ningún servidor; para leerlas se envían una vez a la IA. Te sirven para revisar o corregir un gasto después. Si borras un gasto, se borra su foto.</p>`)}
-  <div class="card"><div class="row between"><h3>Lectura de tickets con IA</h3><span class="pill ${getKey()?"good":"warn"}">${getKey()?"Activa":"Sin clave"}</span></div>
-    <p class="small muted">Pega tu clave de la API de Claude (la obtienes en console.anthropic.com). Se guarda solo en este teléfono y cada lectura se cobra a tu cuenta de la API.</p>
+  <div class="card"><div class="row between"><h3>IA opcional</h3><span class="pill ${getKey()?"good":""}">${getKey()?"Activa":"Modo sin IA"}</span></div>
+    <p class="small muted">Sin clave, el escáner lee tus tickets en el teléfono y Merino responde en modo rápido con tus datos. Si pegas una clave de la API de Claude (console.anthropic.com), las lecturas y el chat usan IA. Se guarda solo en este teléfono y cada uso se cobra a tu cuenta de la API.</p>
     <div class="row"><input id="p-key" type="password" autocomplete="off" placeholder="${getKey() ? "•••• guardada" : "sk-ant-..."}"><button class="btn sm" data-act="savekey">Guardar</button></div>
     ${getKey() ? `<button class="link small" data-act="delkey" style="align-self:flex-start">Quitar clave</button>` : ""}</div>
   <div class="card"><h3>Datos</h3>
@@ -1963,6 +2108,7 @@ const ACT = {
     const d = +t.dataset.d;
     if (d>0 && ui.onb===6) {
       S.goals = [{ id:uid(), name:S.goal.name.trim(), target:S.goal.target }];
+      const mk = monthKey(); for (const f of S.fixed) { if (f.paidNow) ((S.fixedPaid ||= {})[mk] ||= {})[f.id] = "previo"; delete f.paidNow; }
       S.onboarded = true; S.demo = false; unlock("perfil"); ui.view="home"; save(); render(); window.scrollTo(0,0); return;
     }
     ui.onb = clamp(ui.onb + d, 0, 6); render(); window.scrollTo(0,0);
@@ -2016,6 +2162,7 @@ const ACT = {
     S.incomes = S.incomes.filter(x=>x.id!==i.id); ui.confirmDel = null; save(); render(); toast("Ingreso eliminado");
   },
   payfixed: t => { ui.payFixed = t.dataset.id; render(); },
+  markpaid: t => { const f = S.fixed.find(x=>x.id===t.dataset.id); if (!f) return; ((S.fixedPaid ||= {})[monthKey()] ||= {})[f.id] = "previo"; save(); render(); toast(`${f.name} marcado como pagado. No moví dinero de tus cuentas`); },
   cancelpay: () => { ui.payFixed = null; render(); },
   confirmpay: t => {
     const f = S.fixed.find(x=>x.id===t.dataset.id); if (!f || !f.amt) { toast("Ponle monto a este gasto fijo en Perfil"); return; }
@@ -2115,7 +2262,8 @@ document.addEventListener("input", e => {
     const i = S.profile.incomes.find(x=>x.id===el.dataset.income);
     if (i) { i[el.dataset.k] = el.dataset.k==="amt" ? parseMoney(el.value) : el.value; const s = $("#inc-sum"); if (s) s.textContent = S.onboarded ? fmt0(monthlyIn()) + "/mes" : fmt(monthlyIn()); if (S.onboarded) save(); }
   }
-  if (el.dataset.fixed) { const f = S.fixed.find(x=>x.id===el.dataset.fixed); if (f) { f[el.dataset.k] = el.dataset.k==="amt" ? parseMoney(el.value) : el.value; if (S.onboarded) save(); } }
+  if (el.dataset.fixed) { const f = S.fixed.find(x=>x.id===el.dataset.fixed), k = el.dataset.k;
+    if (f) { f[k] = el.type === "checkbox" ? el.checked : k==="amt" ? parseMoney(el.value) : k==="dueDay" ? (+el.value || null) : el.value; if (S.onboarded) save(); } }
   if (el.dataset.acc) { const a = S.accounts.find(x=>x.id===el.dataset.acc); if (a) { a[el.dataset.k] = el.dataset.k==="balance" ? parseSigned(el.value) : el.value; if ($("#cap")) $("#cap").textContent = fmt(cashBalance()); if (S.onboarded) save(); } }
   if (el.dataset.goal) { const g = S.goals.find(x=>x.id===el.dataset.goal); if (g) { g[el.dataset.k] = el.dataset.k==="target" ? parseMoney(el.value) : el.value; save(); } }
   if (el.dataset.budget) { (S.budgets ||= {})[el.dataset.budget] = parseMoney(el.value); save(); }

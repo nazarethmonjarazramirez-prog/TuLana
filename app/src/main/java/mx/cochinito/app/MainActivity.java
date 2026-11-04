@@ -2,10 +2,14 @@ package mx.cochinito.app;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -24,7 +28,18 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebViewAssetLoader;
 
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+
+import org.json.JSONObject;
+
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Contenedor nativo de la app Cochinito.
@@ -39,6 +54,7 @@ public class MainActivity extends ComponentActivity {
     private ValueCallback<Uri[]> pendingFiles;
     private Uri cameraUri;
     private ActivityResultLauncher<Intent> picker;
+    private TextRecognizer recognizer;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -90,6 +106,12 @@ public class MainActivity extends ComponentActivity {
                         bars.setAppearanceLightNavigationBars(!dark);
                     } catch (Exception ignored) { }
                 });
+            }
+
+            // Lee el texto de la foto del ticket en el teléfono (ML Kit, sin internet)
+            @JavascriptInterface
+            public void ocr(String b64, String id) {
+                runOnUiThread(() -> readTicket(b64, id));
             }
         }, "AndroidBridge");
 
@@ -164,6 +186,62 @@ public class MainActivity extends ComponentActivity {
         } else {
             web.loadUrl("https://" + HOST + "/assets/index.html");
         }
+    }
+
+    private void readTicket(String b64, String id) {
+        try {
+            byte[] bytes = Base64.decode(b64, Base64.DEFAULT);
+            Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (bmp == null) { ocrDone(id, "", "decode"); return; }
+            if (recognizer == null) recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            recognizer.process(InputImage.fromBitmap(bmp, 0))
+                    .addOnSuccessListener(result -> ocrDone(id, toRows(result), null))
+                    .addOnFailureListener(e -> ocrDone(id, "", "ocr"));
+        } catch (Exception e) {
+            ocrDone(id, "", "ocr");
+        }
+    }
+
+    /** Une las líneas que están a la misma altura para que "PRODUCTO ... $PRECIO" quede en un solo renglón. */
+    private static String toRows(Text result) {
+        List<Text.Line> lines = new ArrayList<>();
+        for (Text.TextBlock b : result.getTextBlocks())
+            for (Text.Line l : b.getLines())
+                if (l.getBoundingBox() != null) lines.add(l);
+        if (lines.isEmpty()) return result.getText();
+        Collections.sort(lines, (a, b) -> Integer.compare(a.getBoundingBox().centerY(), b.getBoundingBox().centerY()));
+        StringBuilder out = new StringBuilder();
+        List<Text.Line> row = new ArrayList<>();
+        float rowY = 0, rowH = 0;
+        for (Text.Line l : lines) {
+            Rect r = l.getBoundingBox();
+            if (!row.isEmpty() && Math.abs(r.centerY() - rowY) > Math.max(6f, rowH * 0.55f)) {
+                appendRow(out, row); row.clear();
+            }
+            if (row.isEmpty()) { rowY = r.centerY(); rowH = r.height(); }
+            else { rowY = (rowY * row.size() + r.centerY()) / (row.size() + 1); rowH = Math.max(rowH, r.height()); }
+            row.add(l);
+        }
+        appendRow(out, row);
+        return out.toString().trim();
+    }
+
+    private static void appendRow(StringBuilder out, List<Text.Line> row) {
+        if (row.isEmpty()) return;
+        Collections.sort(row, (a, b) -> Integer.compare(a.getBoundingBox().left, b.getBoundingBox().left));
+        for (int i = 0; i < row.size(); i++) { if (i > 0) out.append("  "); out.append(row.get(i).getText()); }
+        out.append('\n');
+    }
+
+    private void ocrDone(String id, String text, String err) {
+        String js = "window.__ocrDone && window.__ocrDone(" + JSONObject.quote(id) + "," + JSONObject.quote(text == null ? "" : text) + "," + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (recognizer != null) recognizer.close();
+        super.onDestroy();
     }
 
     @Override

@@ -10,8 +10,8 @@ android {
         applicationId "mx.cochinito.app"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 6
+        versionName "1.0.4"
     }
 
     buildTypes {
@@ -32,4 +32,6 @@ dependencies {
     implementation 'androidx.activity:activity:1.9.1'
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.webkit:webkit:1.11.0'
+    // Lector de texto en el teléfono (funciona sin internet; el modelo viene dentro del APK)
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 }
