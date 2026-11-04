@@ -255,6 +255,12 @@ button.pill{border:0;cursor:pointer;font:600 12.5px var(--body)}
 .chatbar{position:sticky;bottom:calc(86px + env(safe-area-inset-bottom, 0px));display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding-block:8px;z-index:5}
 .chatbar textarea{min-height:46px;max-height:140px;font:500 15px var(--body);resize:none}
 .chip.add{border-style:dashed}
+.paypick{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface)}
+.paypick.need{border-color:var(--warn);background:var(--warn-soft)}
+.paygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.payopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;text-align:left;font:inherit}
+.payopt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;background:var(--surface)}
+.payopt .pi{font-size:20px}.payopt .pn{font-weight:700;font-size:14.5px;line-height:1.2}.payopt .pb{font-size:12.5px;color:var(--muted)}
 .paybox{padding:14px;border-radius:16px;background:var(--soft, rgba(0,0,0,.04));gap:12px}
 .msg-tag{display:block;margin-top:6px;font-size:11.5px;color:var(--muted)}
 .fixedit{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--line)}
@@ -536,7 +542,7 @@ ${cats}
 6. Si no reconoces un artículo (códigos internos, texto cortado), NO inventes: usa "otros" y confidence ≤ 0.3.
 7. Si el precio de una línea es ilegible, omite ese artículo y usa legibility "parcial".
 8. Si casi nada se lee (foto borrosa, oscura o no es un ticket), devuelve items vacío y legibility "ilegible".
-9. payment: efectivo | tarjeta_debito | tarjeta_credito | transferencia | desconocido. purchased_at en ISO 8601 o null.`;
+9. payment: efectivo | tarjeta_debito | tarjeta_credito | transferencia | desconocido. Si el ticket muestra los últimos 4 dígitos de la tarjeta (por ejemplo "****4417"), ponlos en "card_last4"; si no, null. purchased_at en ISO 8601 o null.`;
 }
 function normalizeAI(raw){
   const o = raw && typeof raw === "object" ? raw : {};
@@ -553,7 +559,9 @@ function normalizeAI(raw){
   if (!at || isNaN(at) || at.getTime() > Date.now() + 864e5) at = new Date();
   return { merchant: o.merchant ? String(o.merchant).slice(0,60) : "", at: at.toISOString(), items,
     tax: num(o.tax_cents) != null ? Math.abs(num(o.tax_cents)) : null, discount: num(o.discount_cents) != null ? Math.abs(num(o.discount_cents)) : null, total: num(o.total_cents),
-    legibility: ["buena","parcial","ilegible"].includes(o.legibility) ? o.legibility : "parcial" };
+    legibility: ["buena","parcial","ilegible"].includes(o.legibility) ? o.legibility : "parcial",
+    payment: ["efectivo","tarjeta_debito","tarjeta_credito","transferencia"].includes(o.payment) ? o.payment : null,
+    card_last4: /^\d{4}$/.test(String(o.card_last4 || "")) ? String(o.card_last4) : null };
 }
 // Diccionario de productos y marcas comunes en México (texto en mayúsculas y sin acentos). El orden importa: gana la primera coincidencia.
 const KEYWORDS = [
@@ -615,7 +623,11 @@ function heuristic(text){
   const at = ticketDate(text), total = find(/^(IMPORTE )?TOTAL( A PAGAR)?\b/i), tax = find(/^I\.?V\.?A\b/i), discount = find(/^DESCUENTO/i);
   const sum = items.reduce((x,i) => x + i.total, 0) - (discount || 0);
   const cuadra = total != null && (Math.abs(sum - total) <= 100 || Math.abs(sum + (tax || 0) - total) <= 100);
-  return { merchant, at:(at || new Date()).toISOString(), items, tax, discount, total, legibility: !items.length ? "ilegible" : cuadra ? "buena" : "parcial" };
+  const T = normName(text);
+  const payment = /CREDITO|CREDIT/.test(T) ? "tarjeta_credito" : /DEBITO|DEBIT/.test(T) ? "tarjeta_debito" : /TRANSFERENCIA|SPEI|CODI/.test(T) ? "transferencia"
+    : /\b(VISA|MASTER ?CARD|AMEX|TARJETA)\b/.test(T) ? "tarjeta" : /\bEFECTIVO\b/.test(T) ? "efectivo" : null;
+  const card_last4 = String(text).match(/(?:\*{2,}|X{3,}|#{2,})\s?(\d{4})\b/i)?.[1] || null;
+  return { merchant, at:(at || new Date()).toISOString(), items, tax, discount, total, legibility: !items.length ? "ilegible" : cuadra ? "buena" : "parcial", payment, card_last4 };
 }
 function ocrQuality(text){
   const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean); if (!lines.length) return 0;
@@ -629,6 +641,18 @@ function spreadAmount(items, amount){
   if (!base || !amount) return;
   let used = 0; for (const i of pos) { const add = Math.round(amount * i.total / base); i.total += add; used += add; }
   pos.reduce((a,b)=>b.total>a.total?b:a).total += amount - used;
+}
+const PAY_TYPES = { efectivo:["efectivo"], tarjeta_debito:["debito","beca","digital"], tarjeta_credito:["credito"], transferencia:["digital","debito"], tarjeta:["debito","credito","beca","digital"] };
+const PAY_LABEL = { efectivo:"en efectivo", tarjeta_debito:"con tarjeta de débito", tarjeta_credito:"con tarjeta de crédito", transferencia:"por transferencia", tarjeta:"con tarjeta" };
+function guessAccount(ex){
+  const accs = S.accounts || [];
+  if (!accs.length) return { id:"", why:null };
+  if (accs.length === 1) return { id: accs[0].id, why: null };
+  if (ex.card_last4) { const a = accs.find(x => String(x.name || "").includes(ex.card_last4)); if (a) return { id:a.id, why:`la tarjeta terminada en ${ex.card_last4}` }; }
+  if (ex.payment) { const m = accs.filter(a => PAY_TYPES[ex.payment]?.includes(a.type)); if (m.length === 1) return { id:m[0].id, why: PAY_LABEL[ex.payment] }; }
+  const last = S.merchantAcc?.[memKey(ex.merchant)];
+  if (last && accs.some(a => a.id === last) && !ex.payment) return { id:last, why:`la última vez que compraste en ${ex.merchant}` };
+  return { id:"", why:null };
 }
 function buildDraft(ex, engine){
   const items = ex.items.map(it => {
@@ -653,8 +677,9 @@ function buildDraft(ex, engine){
   if (ex.legibility === "parcial" && engine !== "basic") warnings.push("Parte del ticket no se leyó bien. Puede faltar algún artículo.");
   if (ex.total == null) warnings.push("No encontré el total del ticket. Si lo ves, escríbelo abajo para comprobar que todo cuadre.");
   if (items.some(i => i.total < 0)) notes.push("Los descuentos y devoluciones aparecen en negativo y restan a su categoría.");
+  const guess = guessAccount(ex);
   return { merchant: ex.merchant || "Compra", at: ex.at, items, total: ex.total, engine,
-    accountId: S.accounts.find(a=>a.type!=="credito")?.id || S.accounts[0]?.id || "", roundup: true, warnings, notes };
+    accountId: guess.id, accountWhy: guess.why, payment: ex.payment || null, roundup: true, warnings, notes };
 }
 async function imageToBlob(file, maxDim=1600){
   const url = URL.createObjectURL(file);
@@ -766,6 +791,7 @@ function confirmDraft(){
     items:d.items.map(i=>({name:i.name, raw:i.raw, qty:i.qty, total:i.total, cat:i.cat, conf:i.conf})), hasPhoto: hadPhoto || !!(d.photo && S.keepPhotos) };
   if (d.fixedId) { rec.fixedId = d.fixedId; rec.month = d.month; ((S.fixedPaid ||= {})[d.month] ||= {})[d.fixedId] = id; }
   S.receipts.push(rec);
+  if (d.accountId && rec.merchant) (S.merchantAcc ||= {})[memKey(rec.merchant)] = d.accountId;
   S.catMemory ||= {};
   for (const i of rec.items) { const k = memKey(i.name); if (k.length >= 3 && i.total > 0) S.catMemory[k] = i.cat; }
   { const ks = Object.keys(S.catMemory); if (ks.length > 600) for (const k of ks.slice(0, ks.length - 600)) delete S.catMemory[k]; }
@@ -1442,6 +1468,7 @@ const MASCOT_LINES = {
   scan_idle:{c:"Tómale foto a tu ticket y yo me encargo de lo aburrido.", d:"Toma una foto del ticket y yo clasifico cada producto."},
   scan_reading:{c:"Leyendo tu ticket… no juzgo, solo categorizo.", d:"Estoy leyendo el ticket y clasificando cada producto."},
   scan_unreadable:{c:"Uy, no le entendí nada. ¿Otra foto con más luz?", d:"No pude leer el ticket. Intenta otra foto con buena luz."},
+  review_pay:{c:"Casi listo: dime con qué pagaste para descontarlo de la cuenta correcta.", d:"Elige con qué cuenta pagaste para descontar el gasto."},
   review_ok:{c:"Todo cuadró. Solo dale guardar.", d:"Identifiqué todos los artículos. Revisa y guarda."},
   review_flag:{c:"Hay {n} que no reconocí. ¿Me echas la mano con la categoría?", d:"Confirma la categoría de {n}: no los reconocí con seguridad."},
   review_diff:{c:"Algo no cuadra con el total del ticket. Elige cómo arreglarlo y seguimos.", d:"La suma no coincide con el total del ticket. Resuelve la diferencia para guardar."},
@@ -1693,6 +1720,16 @@ function nav(){
   return `<nav class="tabs" aria-label="Secciones"><div class="inner">${t("home","Inicio",IC.home)}${t("history","Gastos",IC.list)}${t("scan","Escanear",IC.scan,"fab")}${t("pig","Cochinito",IC.pig)}${t("profile","Perfil",IC.user)}</div></nav>`;
 }
 const monthName = () => new Date().toLocaleDateString("es-MX", { month:"long" });
+const ACC_ICON = { efectivo:"💵", debito:"💳", credito:"💳", ahorro:"🏦", digital:"📱", beca:"🎓" };
+function payPicker(d){
+  if (!S.accounts.length) return `<p class="alert info">Agrega tus cuentas en Perfil para saber de qué dinero sale cada gasto.</p>`;
+  const sel = d.accountId, hint = !sel ? (d.payment ? `El ticket dice que pagaste ${PAY_LABEL[d.payment]}. ¿Con cuál?` : "Elige de qué dinero salió esta compra.")
+    : d.accountWhy ? `Lo elegí por ${d.accountWhy}. Cámbialo si no es así.` : "";
+  return `<div class="paypick ${sel ? "" : "need"}"><div class="row between"><b>¿Con qué pagaste?</b>${sel ? "" : `<span class="pill warn">Falta elegir</span>`}</div>
+    ${hint ? `<p class="small muted">${esc(hint)}</p>` : ""}
+    <div class="paygrid">${S.accounts.map(a => `<button class="payopt" data-act="pickacc" data-id="${a.id}" aria-pressed="${a.id === sel}">
+      <span class="pi">${ACC_ICON[a.type] || "💳"}</span><span class="pn">${esc(a.name || ACC_TYPES[a.type] || "Cuenta")}</span><span class="pb money">${a.type === "credito" ? "Debes " + fmt(Math.max(0, -(a.balance||0))) : fmt(a.balance)}</span></button>`).join("")}</div></div>`;
+}
 function accountOptions(selected, { cashOnly = false } = {}){
   const list = S.accounts.filter(a => !cashOnly || a.type !== "credito");
   return (list.length ? list : S.accounts).map(a => `<option value="${a.id}" ${a.id===selected?"selected":""}>${esc(a.name || ACC_TYPES[a.type] || "Cuenta")} · ${fmt(a.balance)}</option>`).join("");
@@ -2033,12 +2070,13 @@ function viewReview(){
   const ru = total > 0 ? roundupOf(total) : 0;
   const title = d.editingId ? "Editar gasto" : d.source === "manual" ? "Nuevo gasto" : "Revisa tu ticket";
   const mascot = d.source === "manual" || d.editingId ? "" : mismatch ? mascotRow("piensa", say("review_diff"), {size:"sm"})
+    : !d.accountId && S.accounts.length ? mascotRow("piensa", say("review_pay"), {size:"sm"})
     : flagged ? mascotRow("piensa", say("review_flag", {n: flagged===1 ? "1 artículo" : flagged+" artículos"}), {size:"sm"}) : mascotRow("celebra", say("review_ok"), {size:"sm"});
   return `<div class="top"><h1>${title}</h1><button class="link" data-act="discard">${d.editingId ? "Cancelar" : "Descartar"}</button></div>
     ${(d.warnings||[]).map(w=>`<p class="alert warn">${esc(w)}</p>`).join("")}
     ${(d.notes||[]).map(n=>`<p class="alert info">${esc(n)}</p>`).join("")}
-    <div class="grid2"><label class="field"><span>Tienda</span><input id="rv-m" data-draft="merchant" value="${esc(d.merchant)}"></label>
-      <label class="field"><span>Pagaste con</span><select id="rv-acc" data-draft="accountId">${accountOptions(d.accountId)}</select></label></div>
+    <label class="field"><span>Tienda</span><input id="rv-m" data-draft="merchant" value="${esc(d.merchant)}"></label>
+    ${payPicker(d)}
     ${mascot}
     <div class="stack">${d.items.map(i=>`<div class="item ${i.review?"review":""} ${i.total<0?"neg":""}">
       <input class="namefld" id="it-n-${i.id}" data-item="${i.id}" data-k="name" value="${esc(i.name)}" aria-label="Producto">
@@ -2056,8 +2094,9 @@ function viewReview(){
         <div class="row wrap"><button class="btn soft sm" data-act="fixspread">Repartir entre artículos</button><button class="btn soft sm" data-act="fixadjust">${diff < 0 ? "Agregar descuento" : "Agregar la diferencia"}</button><button class="btn ghost sm" data-act="fixusesum">Usar la suma de artículos</button></div>` : ""}
       ${ru>0 && primaryGoal() ? `<label class="row" style="justify-content:flex-start;gap:10px;cursor:pointer"><input type="checkbox" id="rv-ru" data-draft="roundup" ${d.roundup?"checked":""} style="width:20px;height:20px">
         <span class="small">Redondear a ${fmt0(total+ru)} y mandar <b>${fmt(ru)}</b> de ${esc(accName(d.accountId))} a “${esc(primaryGoal().name)}”</span></label>` : ""}</div>
-    <button class="btn accent block" data-act="confirm" ${d.items.length && !mismatch ? "" : "disabled"}>${d.editingId ? "Guardar cambios" : "Guardar gasto"}</button>
-    ${mismatch ? `<p class="small muted" style="text-align:center">Resuelve la diferencia con el total para poder guardar.</p>` : ""}`;
+    <button class="btn accent block" data-act="confirm" ${d.items.length && !mismatch && (d.accountId || !S.accounts.length) ? "" : "disabled"}>${d.editingId ? "Guardar cambios" : "Guardar gasto"}</button>
+    ${mismatch ? `<p class="small muted" style="text-align:center">Resuelve la diferencia con el total para poder guardar.</p>`
+      : !d.accountId && S.accounts.length ? `<p class="small muted" style="text-align:center">Elige arriba con qué pagaste para poder guardar.</p>` : ""}`;
 }
 
 // ---------- Cochinito ----------
@@ -2249,8 +2288,10 @@ const ACT = {
   fixadjust: () => { const d = ui.draft, diff = draftDiff(d), big = d.items.reduce((a,b)=>b.total>a.total?b:a, d.items[0]);
     d.items.push({ id:uid(), name: diff < 0 ? "Descuento del ticket" : "Diferencia del ticket", raw:"", qty:1, total:diff, cat: big?.cat || "otros", conf:1, review: diff > 0 }); render(); },
   fixusesum: () => { ui.draft.total = draftSum(ui.draft); render(); },
+  pickacc: t => { if (!ui.draft) return; ui.draft.accountId = t.dataset.id; ui.draft.accountWhy = null; render(); },
   confirm: () => {
     const d = ui.draft;
+    if (!d.accountId && S.accounts.length) { toast("Elige con qué pagaste"); document.querySelector(".paypick")?.scrollIntoView({ behavior:"smooth", block:"center" }); return; }
     if (d.items.find(i=>!i.name.trim() || !i.total)) { toast("Cada artículo necesita nombre y precio"); return; }
     if (draftMismatch(d)) { toast("Resuelve la diferencia con el total del ticket"); return; }
     confirmDraft();
