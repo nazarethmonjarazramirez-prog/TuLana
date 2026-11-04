@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_bg">#0E2925</color>
+    <color name="ic_bg">#C4531E</color>
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">#EAF1EF</item>
         <item name="android:statusBarColor">#EAF1EF</item>

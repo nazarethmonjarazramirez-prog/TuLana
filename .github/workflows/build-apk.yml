@@ -45,18 +45,18 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Renombrar
-        run: cp app/build/outputs/apk/debug/app-debug.apk Cochinito.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk TuLana.apk
 
       - name: Guardar APK como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: Cochinito-APK
-          path: Cochinito.apk
+          name: TuLana-APK
+          path: TuLana.apk
 
       - name: Publicar en Releases (para descargar desde el teléfono)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Cochinito v1.0.${{ github.run_number }}
-          body: Descarga Cochinito.apk desde tu teléfono Android e instálalo.
-          files: Cochinito.apk
+          name: TuLana v1.0.${{ github.run_number }}
+          body: Descarga TuLana.apk desde tu teléfono Android e instálalo.
+          files: TuLana.apk
