@@ -1,8 +1,7 @@
 name: Publicar versión web
 
+# Solo se publica cuando lo pidan a mano (Actions → Publicar versión web → Run workflow)
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
