@@ -1,0 +1,47 @@
+name: Publicar versión web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Armar la página
+        env:
+          TULANA_SERVER: ${{ vars.TULANA_SERVER }}
+          TULANA_TOKEN: ${{ vars.TULANA_TOKEN }}
+        run: |
+          mkdir -p site
+          cp web/* site/
+          python3 - <<'PY'
+          import os, json
+          s = open('app/src/main/assets/index.html', encoding='utf-8').read()
+          url = os.environ.get('TULANA_SERVER', '').strip().rstrip('/')
+          tok = os.environ.get('TULANA_TOKEN', '').strip()
+          if url:
+              s = s.replace('"__TULANA_SERVER__"', json.dumps(url)).replace('"__TULANA_TOKEN__"', json.dumps(tok))
+          head = ('<link rel="manifest" href="manifest.json">\n'
+                  '<link rel="icon" type="image/png" href="icon-192.png">\n'
+                  '<link rel="apple-touch-icon" href="icon-192.png">\n'
+                  '<meta name="apple-mobile-web-app-capable" content="yes">\n')
+          s = s.replace('</head>', head + '</head>', 1)
+          open('site/index.html', 'w', encoding='utf-8').write(s)
+          print('Página lista', 'con IA' if url else 'sin IA')
+          PY
+          touch site/.nojekyll
+
+      - name: Publicar en GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          force_orphan: true
