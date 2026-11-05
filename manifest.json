@@ -1,0 +1,25 @@
+{
+  "name": "TuLana",
+  "short_name": "TuLana",
+  "description": "Tu dinero, sin culpa: escanea tus tickets, controla tus gastos y ahorra con Merino.",
+  "lang": "es-MX",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7EFE5",
+  "theme_color": "#C4531E",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
