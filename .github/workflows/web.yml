@@ -43,4 +43,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
           publish_branch: gh-pages
-          force_orphan: true
+          # La app va en /app para no borrar el sitio principal (descargas, redes y soporte)
+          destination_dir: app
+          keep_files: true
