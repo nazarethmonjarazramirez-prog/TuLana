@@ -1,20 +1,330 @@
-<!doctype html>
-<html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TuLana</title>
-<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="description" content="TuLana: escanea tus tickets, mira en qué se te va la lana y ahorra con Merino. Descarga la app para Android.">
+<link rel="icon" type="image/png" href="assets/icono.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F7EFE5;--ink:#241A14;--muted:#5A4A3F;--accent:#C4531E}
-@media (prefers-color-scheme:dark){:root{--bg:#1C1511;--ink:#F7EFE5;--muted:#D9C8B4;--accent:#F08A5D}}
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;box-sizing:border-box;text-align:center}
-img{width:120px;height:120px;border-radius:28px}
-h1{font-size:28px;margin:20px 0 8px}
-p{color:var(--muted);font-size:17px;line-height:1.5;max-width:340px;margin:0 auto}
-b{color:var(--accent)}
-</style></head>
-<body><main>
-<img src="icon-192.png" alt="Merino, la mascota de TuLana">
-<h1>¡Gracias por probar TuLana!</h1>
-<p>La demo web ya terminó. <b>Merino</b> se fue a descansar 🐑</p>
-</main></body></html>
+/* Plan: la marca de la app (terracota de Merino sobre papel crema), tipografía redonda como la lana,
+   divisiones con borde de lana entre secciones; columna central de 1120px. */
+:root{
+  --paper:#F6EEE3; --wool:#FFFBF5; --ink:#241A14; --muted:#6B5B4F; --line:#E5D4C0;
+  --clay:#C4531E; --clay-ink:#FFF7EE; --apricot:#F08A5D; --soft:#FBE3D3;
+  --display:'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
+  --body:'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#18110D; --wool:#231A14; --ink:#F6EEE3; --muted:#C2AF9C; --line:#3B2E25;
+    --clay:#E8794A; --clay-ink:#1E140F; --apricot:#F4A37D; --soft:#3A2418; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#18110D; --wool:#231A14; --ink:#F6EEE3; --muted:#C2AF9C; --line:#3B2E25;
+  --clay:#E8794A; --clay-ink:#1E140F; --apricot:#F4A37D; --soft:#3A2418; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55}
+img{max-width:100%;display:block}
+a{color:inherit}
+h1,h2,h3{font-family:var(--display);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:clamp(32px,5vw,48px)}
+h3{font-size:22px}
+p{margin:0}
+.wrap{width:min(1120px,100% - 32px);margin-inline:auto}
+:focus-visible{outline:3px solid var(--clay);outline-offset:3px;border-radius:8px}
+
+/* Encabezado */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:var(--display);font-weight:700;font-size:24px}
+.brand img{width:36px;height:36px;border-radius:11px}
+nav{display:flex;align-items:center;gap:22px;font-weight:600;font-size:15px}
+nav a{text-decoration:none;color:var(--muted)}
+nav a:hover{color:var(--ink)}
+nav .navcta{color:var(--clay-ink);background:var(--clay);padding:8px 16px;border-radius:999px}
+nav .navcta:hover{color:var(--clay-ink)}
+@media (max-width:760px){nav a:not(.navcta){display:none}}
+
+/* Portada */
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:56px 0 40px}
+.pill{display:inline-flex;align-items:center;gap:8px;background:var(--soft);color:var(--clay);font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:7px 14px;border-radius:999px}
+.hero h1{font-size:clamp(46px,8vw,92px);font-weight:700;margin:18px 0 18px}
+.hero h1 em{font-style:normal;color:var(--clay)}
+.lead{font-size:20px;color:var(--muted);max-width:30em}
+.ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:14px;text-decoration:none;border-radius:20px;padding:14px 22px 14px 18px;font-weight:800;line-height:1.2;border:2px solid transparent}
+.btn svg{flex:none}
+.btn small{display:block;font-weight:600;font-size:13px;opacity:.85}
+.btn-main{background:var(--clay);color:var(--clay-ink);box-shadow:0 10px 24px -12px var(--clay)}
+.btn-main:hover{filter:brightness(1.06)}
+.btn-soon{border-color:var(--line);color:var(--muted);background:var(--wool);cursor:default}
+.qr{display:flex;align-items:center;gap:16px;margin-top:28px;padding:14px;border-radius:20px;background:var(--wool);border:1px solid var(--line);max-width:430px}
+.qr img{width:96px;height:96px;border-radius:12px;background:#fff;padding:4px}
+.qr p{font-size:15px;color:var(--muted)}
+.qr b{color:var(--ink)}
+@media (max-width:900px){.qr{display:none}}
+
+.stage{position:relative;justify-self:center;width:min(320px,80vw);padding:0 0 30px 40px}
+.phone{border:10px solid #241A14;border-radius:44px;overflow:hidden;aspect-ratio:390/844;background:#fff;box-shadow:0 30px 60px -30px rgba(36,26,20,.55)}
+.phone img{width:100%;height:100%;object-fit:cover;object-position:top}
+.merino{position:absolute;left:-46px;bottom:-6px;width:150px;animation:bob 3.2s ease-in-out infinite}
+.bubble{position:absolute;left:-84px;bottom:168px;background:var(--wool);color:var(--ink);border:1px solid var(--line);border-radius:18px 18px 18px 4px;padding:10px 14px;font-weight:700;font-size:14px;max-width:168px;box-shadow:0 10px 24px -16px rgba(0,0,0,.4)}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){.merino{animation:none}html{scroll-behavior:auto}}
+@media (max-width:900px){.hero{grid-template-columns:1fr;padding-top:36px}.stage{margin-top:8px}}
+
+/* Borde de lana entre secciones */
+.wool-edge{height:34px;color:var(--wool);display:block;width:100%}
+.band{background:var(--wool)}
+.band + .wool-edge{transform:rotate(180deg)}
+section{padding:64px 0}
+.head{display:flex;flex-direction:column;gap:10px;margin-bottom:32px;max-width:640px}
+.head p{color:var(--muted);font-size:18px}
+
+/* Descarga */
+.dl{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:20px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:26px;padding:26px;display:flex;flex-direction:column;gap:14px}
+.band .card{background:var(--paper)}
+.card.main{border:2px solid var(--clay)}
+.tag{align-self:flex-start;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:var(--soft);color:var(--clay)}
+.tag.off{background:var(--line);color:var(--muted)}
+.card p{color:var(--muted)}
+.steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;counter-increment:s}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--clay);color:var(--clay-ink);font-weight:800;font-family:var(--display)}
+.note{font-size:14px;background:var(--soft);border-radius:14px;padding:10px 14px;color:var(--ink)}
+.meta{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media (max-width:900px){.dl{grid-template-columns:1fr}}
+
+/* Funciones */
+.feat{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.feat figure{margin:0;display:flex;flex-direction:column;gap:14px}
+.mini{border:6px solid #241A14;border-radius:26px;overflow:hidden;aspect-ratio:390/600;background:#fff}
+.mini img{width:100%;height:100%;object-fit:cover;object-position:top}
+.feat figcaption{display:flex;flex-direction:column;gap:6px}
+.feat figcaption p{color:var(--muted);font-size:16px}
+@media (max-width:900px){.feat{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:480px){.feat{grid-template-columns:1fr}.mini{max-width:300px}}
+
+/* Video */
+.vid{display:grid;grid-template-columns:auto 1fr;gap:48px;align-items:center}
+.vid video{width:min(300px,100%);aspect-ratio:9/16;border-radius:26px;background:#241A14;box-shadow:0 30px 60px -30px rgba(36,26,20,.55)}
+.vid .head{margin:0}
+@media (max-width:760px){.vid{grid-template-columns:1fr;justify-items:center}}
+
+/* Redes */
+.social{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.soc{display:flex;align-items:center;gap:14px;padding:18px;border-radius:22px;border:1px solid var(--line);background:var(--paper);text-decoration:none}
+.soc .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--soft);color:var(--clay);flex:none}
+.soc b{display:block;font-family:var(--display);font-size:20px}
+.soc span{color:var(--muted);font-size:14px}
+@media (max-width:760px){.social{grid-template-columns:1fr}}
+
+/* Soporte */
+.sup{display:grid;grid-template-columns:1.4fr 1fr;gap:28px;align-items:start}
+.faq{display:flex;flex-direction:column;gap:12px}
+.faq div{background:var(--wool);border:1px solid var(--line);border-radius:20px;padding:18px 20px}
+.faq h3{font-size:19px;margin-bottom:6px}
+.faq p{color:var(--muted);font-size:16px}
+.contact{position:sticky;top:84px}
+.contact .card{background:var(--wool)}
+.contact ul{margin:0;padding-left:20px;color:var(--muted);font-size:15px;display:flex;flex-direction:column;gap:4px}
+@media (max-width:900px){.sup{grid-template-columns:1fr}.contact{position:static}}
+
+footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--muted);font-size:14px}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="#inicio"><img src="assets/icono.png" alt="">TuLana</a>
+    <nav aria-label="Secciones">
+      <a href="#como">Cómo funciona</a>
+      <a href="#video">Video</a>
+      <a href="#redes">Redes</a>
+      <a href="#soporte">Soporte</a>
+      <a class="navcta" href="#descargar">Descargar</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inicio">
+  <div class="wrap hero">
+    <div>
+      <span class="pill">Gratis · Para jóvenes de 16 a 30</span>
+      <h1>Tu dinero, <em>sin culpa.</em></h1>
+      <p class="lead">Escanea tus tickets, mira en qué se te va la lana y ahorra para lo que quieres, con Merino a tu lado.</p>
+      <div class="ctas">
+        <a class="btn btn-main" href="https://github.com/nazarethmonjarazramirez-prog/TuLana/releases/latest/download/TuLana.apk">
+          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 9h10v8a1.5 1.5 0 0 1-1.5 1.5H15v2.5a1 1 0 0 1-2 0v-2.5h-2v2.5a1 1 0 0 1-2 0v-2.5h-.5A1.5 1.5 0 0 1 7 17V9Zm-2.5 0a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1Zm15 0a1 1 0 0 1 1 1v5a1 1 0 0 1-2 0v-5a1 1 0 0 1 1-1ZM8.6 3.3l1 1.6A5.6 5.6 0 0 1 12 4.4c.8 0 1.6.2 2.4.5l1-1.6a.4.4 0 0 1 .7.4l-1 1.6A4.9 4.9 0 0 1 17 8H7a4.9 4.9 0 0 1 1.9-3.7l-1-1.6a.4.4 0 1 1 .7-.4ZM10 6.2a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2Zm4 0a.6.6 0 1 0 0 1.2.6.6 0 0 0 0-1.2Z"/></svg>
+          <span>Descargar para Android<small>Versión 1.0.11 · 47 MB · Android 8 o más reciente</small></span>
+        </a>
+        <span class="btn btn-soon" aria-disabled="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 18.5h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>iPhone<small>Muy pronto</small></span>
+        </span>
+      </div>
+      <div class="qr">
+        <img src="assets/qr-android.png" alt="Código QR para descargar TuLana en Android">
+        <p><b>¿Estás en la computadora?</b><br>Escanea el código con tu celular Android y la descarga empieza ahí.</p>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="phone"><img src="assets/app-inicio.jpg" alt="Pantalla de inicio de TuLana con cuánto puedes gastar este mes"></div>
+      <p class="bubble">¡Hola! Soy Merino. Te ayudo a cuidar tu lana.</p>
+      <img class="merino" src="assets/merino.png" alt="Merino, la mascota de TuLana">
+    </div>
+  </div>
+
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+  <section id="descargar" class="band">
+    <div class="wrap">
+      <div class="head">
+        <h2>Descárgala</h2>
+        <p>Por ahora TuLana está para Android. La versión para iPhone viene en camino.</p>
+      </div>
+      <div class="dl">
+        <div class="card main">
+          <span class="tag">Android · Disponible</span>
+          <h3>Instálala en 4 pasos</h3>
+          <ol class="steps">
+            <li><span>Toca <b>Descargar para Android</b> desde tu celular.</span></li>
+            <li><span>Abre el archivo <b>TuLana.apk</b> cuando termine de bajar.</span></li>
+            <li><span>Si tu teléfono lo pide, permite <b>instalar apps de esta fuente</b>.</span></li>
+            <li><span>Toca <b>Instalar</b> y abre TuLana. Merino te recibe.</span></li>
+          </ol>
+          <p class="note">Tu teléfono puede avisar que la app es desconocida porque todavía no está en Google Play. Es normal en esta etapa.</p>
+          <a class="btn btn-main" href="https://github.com/nazarethmonjarazramirez-prog/TuLana/releases/latest/download/TuLana.apk"><span>Descargar para Android<small>Versión 1.0.11 · 47 MB</small></span></a>
+        </div>
+        <div class="card">
+          <span class="tag off">iPhone · Muy pronto</span>
+          <h3>Versión para iPhone</h3>
+          <p>Estamos preparando TuLana para iPhone. Síguenos en redes para saber cuándo sale.</p>
+        </div>
+        <div class="card">
+          <span class="tag off">Navegador · En pausa</span>
+          <h3>Versión web</h3>
+          <p>La versión para usar desde el navegador está en pausa por ahora. La abriremos de nuevo pronto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+
+  <section id="como">
+    <div class="wrap">
+      <div class="head">
+        <h2>Así te ayuda TuLana</h2>
+        <p>Pensada para cómo te pagan: por semana, por quincena o con beca.</p>
+      </div>
+      <div class="feat">
+        <figure>
+          <div class="mini"><img src="assets/app-escaner.jpg" alt="Revisión de un ticket escaneado, con la pregunta de con qué pagaste"></div>
+          <figcaption><h3>Escanea tus tickets</h3><p>Le tomas foto y la app reconoce cada producto y lo pone en su categoría: despensa, antojos, transporte…</p></figcaption>
+        </figure>
+        <figure>
+          <div class="mini"><img src="assets/app-inicio.jpg" alt="Inicio con lo que puedes gastar y en qué se te va el dinero"></div>
+          <figcaption><h3>Sabe cuánto puedes gastar</h3><p>Aparta tus pagos fijos con su fecha y te dice lo que de verdad te queda para el mes.</p></figcaption>
+        </figure>
+        <figure>
+          <div class="mini"><img src="assets/app-cochinito.jpg" alt="Cochinito de cristal con el avance de una meta de ahorro"></div>
+          <figcaption><h3>Ahorra en tu cochinito</h3><p>Crea metas, redondea cada compra y mira cómo se llena. Entre más ahorras, más lana tiene Merino.</p></figcaption>
+        </figure>
+        <figure>
+          <div class="mini"><img src="assets/app-merino.jpg" alt="Chat con Merino respondiendo en qué gastas más"></div>
+          <figcaption><h3>Pregúntale a Merino</h3><p>Responde con tus propios números y te recuerda tus pagos antes de que venzan.</p></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+  <section id="video" class="band">
+    <div class="wrap vid">
+      <video src="assets/tulana-video.mp4" poster="assets/tulana-video-portada.jpg" controls playsinline preload="none" aria-label="Video de presentación de TuLana con Merino"></video>
+      <div class="head">
+        <h2>Conoce a Merino en 30 segundos</h2>
+        <p>Uno de cada tres adultos en México no ahorró de ninguna forma. Merino quiere cambiar eso, ticket por ticket.</p>
+        <p class="meta">Fuente del dato: INEGI y CNBV, Encuesta Nacional de Inclusión Financiera 2024.</p>
+      </div>
+    </div>
+  </section>
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+
+  <section id="redes">
+    <div class="wrap">
+      <div class="head">
+        <h2>Síguenos</h2>
+        <p>Tips de ahorro, novedades de la app y a Merino en su día a día.</p>
+      </div>
+      <!-- Para activar una red: cambia href="#redes" por el enlace del perfil y "Muy pronto" por el usuario -->
+      <div class="social">
+        <a class="soc" href="#redes">
+          <span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor"/></svg></span>
+          <span><b>Instagram</b><span>Muy pronto</span></span>
+        </a>
+        <a class="soc" href="#redes">
+          <span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 3c.4 2.6 2.2 4.4 5 4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span><b>TikTok</b><span>Muy pronto</span></span>
+        </a>
+        <a class="soc" href="#redes">
+          <span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4.5h-3a4 4 0 0 0-4 4V11H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5h-3V8.8c0-.5.2-.8.5-.8Z" fill="currentColor"/></svg></span>
+          <span><b>Facebook</b><span>Muy pronto</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+  <section id="soporte" class="band">
+    <div class="wrap">
+      <div class="head">
+        <h2>Soporte técnico</h2>
+        <p>Las dudas más comunes, y cómo escribirnos si algo no funciona.</p>
+      </div>
+      <div class="sup">
+        <div class="faq">
+          <div><h3>¿Cuánto cuesta?</h3><p>TuLana es gratis. Más adelante habrá una versión Premium con funciones extra, pero la versión básica seguirá siendo gratuita.</p></div>
+          <div><h3>¿Dónde se guardan mis datos?</h3><p>En tu propio teléfono. Cuando escaneas un ticket con internet, la foto se envía a nuestro servidor solo para leerla con inteligencia artificial.</p></div>
+          <div><h3>¿Funciona sin internet?</h3><p>Sí. Sin conexión, el teléfono lee el ticket por su cuenta y Merino responde en modo rápido con tus datos.</p></div>
+          <div><h3>Mi teléfono dice que la app es desconocida</h3><p>Pasa porque TuLana todavía no está en Google Play. Permite la instalación solo para este archivo y listo.</p></div>
+          <div><h3>¿Cómo la actualizo?</h3><p>Descarga la versión nueva desde esta página e instálala. Si tu teléfono no te deja, desinstala la anterior y vuelve a instalar.</p></div>
+          <div><h3>¿Hay versión para iPhone?</h3><p>Todavía no. Estamos trabajando en ella; avisaremos en nuestras redes cuando salga.</p></div>
+        </div>
+        <aside class="contact">
+          <div class="card">
+            <span class="tag">Contacto</span>
+            <h3>¿Algo no funciona?</h3>
+            <p>Muy pronto tendremos un correo de soporte. Mientras tanto, escríbenos por nuestras redes.</p>
+            <p><b>Para ayudarte más rápido, cuéntanos:</b></p>
+            <ul>
+              <li>Qué estabas haciendo cuando falló.</li>
+              <li>El modelo de tu teléfono.</li>
+              <li>Una captura de pantalla, si puedes.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <svg class="wool-edge" viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true"><path fill="currentColor" d="M0 34V24a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0a25 20 0 0 1 50 0V34Z"/></svg>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#inicio"><img src="assets/icono.png" alt="">TuLana</a>
+    <p>Proyecto estudiantil · Tus datos se guardan en tu teléfono · © 2026 Equipo TuLana</p>
+  </div>
+</footer>
+</body>
+</html>
