@@ -10,11 +10,27 @@ android {
         applicationId "mx.cochinito.app"
         minSdk 26
         targetSdk 34
-        versionCode 10
-        versionName "1.0.9"
+        versionCode 11
+        versionName "1.1.0"
+    }
+
+    // Firma fija de TuLana: todas las versiones llevan la misma, así se actualizan encima sin perder datos.
+    // La contraseña vive en el secreto TULANA_KS_PASS de GitHub (nunca en el código).
+    def ksPass = System.getenv('TULANA_KS_PASS')
+    signingConfigs {
+        tulana {
+            storeFile file('tulana.keystore')
+            storeType 'pkcs12'
+            storePassword ksPass ?: ''
+            keyAlias 'tulana'
+            keyPassword ksPass ?: ''
+        }
     }
 
     buildTypes {
+        debug {
+            if (ksPass) signingConfig signingConfigs.tulana
+        }
         release { minifyEnabled false }
     }
 

@@ -42,10 +42,19 @@ jobs:
           PY
 
       - name: Compilar APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        env:
+          TULANA_KS_PASS: ${{ secrets.TULANA_KS_PASS }}
+        run: |
+          if [ -n "$TULANA_KS_PASS" ]; then echo "Firmando con la llave de TuLana"; else echo "::warning::Falta el secreto TULANA_KS_PASS: se firmará con una llave temporal"; fi
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Renombrar
         run: cp app/build/outputs/apk/debug/app-debug.apk TuLana.apk
+
+      - name: Mostrar la firma del APK
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs TuLana.apk | grep -E "DN|SHA-256" || true
 
       - name: Guardar APK como artefacto
         uses: actions/upload-artifact@v4
