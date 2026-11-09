@@ -101,6 +101,7 @@ public final class Reminders {
         if (!s.optBoolean("on", false)) return;
 
         String[] msg = paymentMessage(s);
+        if (msg == null) msg = weeklyMessage(s);
         if (msg == null) {
             // Si ya abriste la app hoy, Merino no molesta
             if (today.equals(p.getString("lastOpen", ""))) return;
@@ -113,6 +114,19 @@ public final class Reminders {
             }
         }
         if (show(c, msg[0], msg[1])) p.edit().putString("lastNotified", today).apply();
+    }
+
+    /** Los domingos, Merino manda el resumen de la semana (la app lo calcula y se lo pasa al teléfono). */
+    private static String[] weeklyMessage(JSONObject s) {
+        Calendar cal = Calendar.getInstance();
+        if (cal.get(Calendar.DAY_OF_WEEK) != Calendar.SUNDAY) return null;
+        JSONObject w = s.optJSONObject("weekly");
+        if (w == null) return null;
+        cal.add(Calendar.DAY_OF_YEAR, -6);   // el lunes de esta semana
+        String monday = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.getTime());
+        if (!monday.equals(w.optString("wk", ""))) return null;
+        String title = w.optString("title", ""), text = w.optString("text", "");
+        return title.isEmpty() || text.isEmpty() ? null : new String[]{title, text};
     }
 
     private static String[] paymentMessage(JSONObject s) {

@@ -228,6 +228,15 @@ button.pill{border:0;cursor:pointer;font:600 12.5px var(--body)}
 .acc-pic{width:44px;height:44px;border-radius:50%;flex:none;object-fit:cover;background:var(--sunk);display:grid;place-items:center;font:600 18px var(--display);color:var(--ink)}
 .legal{text-align:center;line-height:1.5}
 .legal a{color:inherit;text-underline-offset:3px}
+.cost-line{margin:2px 0 0;color:var(--muted)}
+.cost-line b{color:var(--ink)}
+.retos .reto{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+.retos .reto:first-of-type{border-top:0}
+.reto-op{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:14px;background:var(--sunk)}
+.reto-op > div{display:flex;flex-direction:column;gap:2px}
+.bar.bad i{background:var(--warn)}
+button.badge{font:inherit;color:inherit;text-align:left;cursor:pointer;border:0}
+.share-tag{font-size:11px;font-weight:700;color:var(--accent);margin-top:2px}
 .confirm.info{background:var(--sunk)}
 .photo img{width:100%;border-radius:12px;display:block}
 .item.neg{background:var(--mint-soft)}
@@ -606,12 +615,155 @@ function dataNote(){
   if (cuenta()) return `<p class="small muted">Tus datos se guardan en ${LUGAR} y se respaldan en tu cuenta de Google.</p>`;
   return `<p class="small muted">Tus datos se guardan solo en ${LUGAR}. ${IS_APP ? "Si desinstalas la app se borran." : "Si borras los datos del navegador se pierden."}${cuentasOn() ? " Para no perderlos, entra con Google en <b>Tu cuenta</b>." : ""}</p>`;
 }
-{ const s0 = save; save = function(...a){ const out = s0.apply(this, a); scheduleBackup(); return out; }; }
+{ const s0 = save; save = function(...a){ try { checkRetos(); } catch {} const out = s0.apply(this, a); scheduleBackup(); return out; }; }
+{ const r0 = render; render = function(...a){ let ch = false; try { ch = checkRetos(); } catch {} if (ch) save(); return r0.apply(this, a); }; }
 window.__onPause = () => { if (cuenta()?.token) backupNow(false); };
 document.addEventListener("visibilitychange", () => { if (document.hidden) window.__onPause(); });
 { const a0 = afterRender; afterRender = function(...x){ const o = a0.apply(this, x); try { mountGsi(); } catch {} return o; }; }
 window.addEventListener("online", () => scheduleBackup(3000));
 setTimeout(() => scheduleBackup(5000), 0);
+
+// ───────────────────────── Costo en horas de trabajo ─────────────────────────
+const WORK_HOURS = { "Medio tiempo": 20, "Tiempo completo": 40, "Por mi cuenta": 30 };
+const fmtN = x => (Math.round(x * 10) / 10).toLocaleString("es-MX", { maximumFractionDigits: 1 });
+function costLabel(cents){
+  if (!(cents > 0)) return "";
+  const wi = srcIncome("work"), wkh = WORK_HOURS[S.profile.work];
+  if (wi && wi.amt > 0 && wkh) {
+    const perHour = wi.amt * (FREQS[wi.freq]?.f ?? 1) / (wkh * 52 / 12);
+    if (perHour > 0) { const h = cents / perHour; return h < 1 ? `${Math.max(1, Math.round(h * 60))} min de trabajo` : `${fmtN(h)} h de trabajo`; }
+  }
+  const mi = monthlyIn();
+  if (mi > 0) { const days = cents / (mi / 30); return days >= 1 ? `${fmtN(days)} ${days >= 1.05 ? "días" : "día"} de tu dinero` : `el ${fmtN(cents / mi * 100)} % de tu dinero del mes`; }
+  return "";
+}
+const costLine = c => { const l = costLabel(c); return l ? `<p class="small cost-line">⏱ Equivale a <b>${l}</b></p>` : ""; };
+
+// ───────────────────────── Retos de ahorro ─────────────────────────
+const RETOS = [
+  { id:"sin_antojos3", t:"3 días sin antojos", d:"No registres antojos durante 3 días.", kind:"nocat", cats:["antojos"], days:3, xp:40 },
+  { id:"sin_fuera7", t:"Una semana sin comer fuera", d:"7 días sin gastos de comida fuera.", kind:"nocat", cats:["comida_fuera"], days:7, xp:60 },
+  { id:"junta500", t:"Junta $500 este mes", d:"Mete $500 a tus metas antes de que termine el mes.", kind:"save", amt:50000, xp:60 },
+  { id:"racha7", t:"Registra 7 días seguidos", d:"Escanea o anota al menos un gasto cada día.", kind:"streak", days:7, xp:50 },
+  { id:"evita3", t:"Evita 3 antojos", d:"Registra 3 antojos evitados en tu cochinito.", kind:"avoided", n:3, xp:50 },
+];
+const retosState = () => (S.retos ||= { active:{}, done:{} });
+const DAY = 864e5;
+function retoProgress(r, startIso){
+  const start = new Date(startIso).getTime(), now = Date.now();
+  if (r.kind === "nocat") {
+    const broke = S.receipts.some(x => new Date(x.at).getTime() >= start && x.items.some(i => r.cats.includes(i.cat) && i.total > 0));
+    const d = Math.min(r.days, Math.floor((now - start) / DAY));
+    return { cur:d, goal:r.days, label:`${d} de ${r.days} días`, failed:broke, done:!broke && d >= r.days };
+  }
+  if (r.kind === "save") {
+    const end = new Date(start); end.setMonth(end.getMonth() + 1, 1); end.setHours(0,0,0,0);
+    const s = S.contributions.filter(c => c.amt > 0 && new Date(c.at).getTime() >= start && new Date(c.at) < end).reduce((a, c) => a + c.amt, 0);
+    return { cur:Math.min(s, r.amt), goal:r.amt, label:`${fmt0(s)} de ${fmt0(r.amt)}`, failed: now >= end.getTime() && s < r.amt, done: s >= r.amt };
+  }
+  if (r.kind === "streak") {
+    const days = new Set(S.receipts.filter(x => new Date(x.at).getTime() >= start - DAY).map(x => dayKey(x.at)));
+    let n = 0; const d = new Date(); if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+    while (days.has(dayKey(d)) && d.getTime() >= start - DAY) { n++; d.setDate(d.getDate() - 1); }
+    return { cur:Math.min(n, r.days), goal:r.days, label:`${Math.min(n, r.days)} de ${r.days} días`, failed:false, done:n >= r.days };
+  }
+  const n = S.contributions.filter(c => c.reason === "antojo_evitado" && new Date(c.at).getTime() >= start).length;
+  return { cur:Math.min(n, r.n), goal:r.n, label:`${Math.min(n, r.n)} de ${r.n}`, failed:false, done:n >= r.n };
+}
+function checkRetos(){
+  if (!S.onboarded || S.demo) return false;
+  const st = retosState(); let changed = false;
+  for (const [id, a] of Object.entries(st.active)) {
+    const r = RETOS.find(x => x.id === id); if (!r) { delete st.active[id]; changed = true; continue; }
+    const p = retoProgress(r, a.start);
+    if (p.done) {
+      delete st.active[id]; (st.done[id] ||= []).push(new Date().toISOString()); S.xp += r.xp; changed = true;
+      ui.retoDone = id; setTimeout(() => toast(`¡Reto cumplido: ${r.t}! +${r.xp} XP`), 700);
+    } else if (p.failed && !a.failed) { a.failed = true; changed = true; }
+  }
+  return changed;
+}
+function retosCard(){
+  if (S.demo) return "";
+  const st = retosState(), active = Object.entries(st.active), doneN = Object.values(st.done).reduce((a, l) => a + l.length, 0);
+  const avail = RETOS.filter(r => !st.active[r.id]);
+  const justDone = ui.retoDone && RETOS.find(r => r.id === ui.retoDone);
+  return `<div class="card retos"><div class="row between"><h3>Retos de ahorro</h3>${doneN ? `<span class="pill good">${doneN} cumplido${doneN === 1 ? "" : "s"}</span>` : ""}</div>
+    ${justDone ? `<div class="confirm info"><b>🏆 ¡Cumpliste “${esc(justDone.t)}”!</b><div class="row wrap"><button class="btn sm accent" data-act="share" data-kind="reto" data-id="${justDone.id}">Compartir</button><button class="btn ghost sm" data-act="retook">Listo</button></div></div>` : ""}
+    ${active.map(([id, a]) => { const r = RETOS.find(x => x.id === id); if (!r) return ""; const p = retoProgress(r, a.start);
+      return `<div class="reto"><div class="row between"><b>${esc(r.t)}</b><span class="small muted">${p.label}</span></div>
+        <div class="bar ${p.failed ? "bad" : ""}"><i style="width:${p.goal ? clamp(p.cur / p.goal * 100, 0, 100) : 0}%"></i></div>
+        ${p.failed ? `<p class="small">Esta vez no salió. ¿Lo intentas de nuevo?</p><div class="row"><button class="btn soft sm" data-act="retostart" data-id="${id}">Volver a empezar</button><button class="link small" data-act="retoquit" data-id="${id}">Quitar</button></div>`
+          : `<div class="row between"><span class="small muted">${esc(r.d)}</span><button class="link small" data-act="retoquit" data-id="${id}">Abandonar</button></div>`}</div>`; }).join("")}
+    ${!active.length ? `<p class="small muted">Acepta un reto y Merino te avisa cuando lo cumplas. Cada reto da XP extra.</p>` : ""}
+    ${avail.length ? `<div class="stack" style="gap:8px">${avail.map(r => `<div class="reto-op"><div style="min-width:0"><b>${esc(r.t)}</b><span class="small muted">${esc(r.d)} · +${r.xp} XP</span></div>
+      <button class="btn soft sm" data-act="retostart" data-id="${r.id}">Aceptar</button></div>`).join("")}</div>` : ""}</div>`;
+}
+
+// ───────────────────────── Resumen semanal ─────────────────────────
+function weekStats(offsetWeeks = 0){
+  const start = periodStart("week"); start.setDate(start.getDate() - 7 * offsetWeeks);
+  const end = new Date(start); end.setDate(end.getDate() + 7);
+  const by = {}; let total = 0, n = 0;
+  for (const r of S.receipts) { const t = new Date(r.at); if (t < start || t >= end || r.source === "fijo") continue; n++;
+    for (const i of r.items) { by[i.cat] = (by[i.cat] || 0) + i.total; total += i.total; } }
+  const saved = S.contributions.filter(c => { const t = new Date(c.at); return c.amt > 0 && t >= start && t < end; }).reduce((a, c) => a + c.amt, 0);
+  const top = Object.entries(by).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])[0];
+  const imp = Object.entries(by).filter(([c]) => CATS[c]?.imp).reduce((a, [, v]) => a + Math.max(0, v), 0);
+  return { start, total, n, saved, top, impPct: total > 0 ? Math.round(imp / total * 100) : 0, key: dayKey(start) };
+}
+function weeklyText(w){
+  if (!w.n && !w.saved) return "Esta semana no registraste gastos. ¿Se te pasó escanear algún ticket?";
+  return `Gastaste ${fmt0(w.total)}${w.top ? `; lo que más fue ${CATS[w.top[0]]?.n.toLowerCase() || "otros"} (${fmt0(w.top[1])})` : ""}.${w.saved ? ` Apartaste ${fmt0(w.saved)} en tu cochinito.` : ""}`;
+}
+function weeklyCard(){
+  const dow = new Date().getDay(); if (dow !== 0 && dow !== 1) return "";
+  const w = weekStats(dow === 1 ? 1 : 0); if (S.weeklySeen === w.key) return "";
+  const prev = weekStats(dow === 1 ? 2 : 1), diff = w.total - prev.total;
+  const cmp = prev.total > 0 && w.total > 0 ? (diff <= 0 ? `<span class="pill good">${fmt0(-diff)} menos que la semana anterior</span>` : `<span class="pill imp">${fmt0(diff)} más que la semana anterior</span>`) : "";
+  return `<div class="card weekly"><div class="row between"><h3>${dow === 1 ? "Tu semana pasada" : "Tu semana"}</h3><button class="x" data-act="weeklyseen" data-k="${w.key}" aria-label="Cerrar resumen">×</button></div>
+    ${mascotRow(diff <= 0 ? "celebra" : "piensa", weeklyText(w), { size:"sm" })}
+    <div class="row wrap" style="gap:8px">${cmp}${w.impPct ? `<span class="pill">Impulsivo ${w.impPct} %</span>` : ""}</div></div>`;
+}
+
+// ───────────────────────── Compartir logros ─────────────────────────
+function wrapLines(ctx, text, maxW){
+  const words = String(text).split(/\s+/), lines = []; let cur = "";
+  for (const w of words) { const t = cur ? cur + " " + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+async function shareCard({ kicker, title, sub, mood = "celebra" }){
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, "#F6EEE3"); grd.addColorStop(1, "#F2DCC6"); g.fillStyle = grd; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#C4531E"; g.beginPath(); g.arc(W / 2, 470, 300, 0, Math.PI * 2); g.fill();
+  const cs = getComputedStyle(document.documentElement);
+  const svg = merinoSVG({ mood, fluff: .9, acc: null }).replace(/var\((--[\w-]+)\)/g, (_, v) => cs.getPropertyValue(v).trim() || "#C4531E")
+    .replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"');
+  try { const img = new Image(); img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); await img.decode(); g.drawImage(img, W / 2 - 270, 190, 540, 540); } catch {}
+  const font = (w, s) => `${w} ${s}px "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif`;
+  g.textAlign = "center"; g.fillStyle = "#B04A1A"; g.font = font(800, 40); g.fillText(String(kicker || "").toUpperCase(), W / 2, 880);
+  g.fillStyle = "#241A14"; g.font = font(800, 84);
+  const tl = wrapLines(g, title, W - 160).slice(0, 3); tl.forEach((l, i) => g.fillText(l, W / 2, 985 + i * 92));
+  g.fillStyle = "#5A4A3F"; g.font = font(500, 40);
+  wrapLines(g, sub || "", W - 200).slice(0, 2).forEach((l, i) => g.fillText(l, W / 2, 985 + tl.length * 92 + 30 + i * 52));
+  g.fillStyle = "#241A14"; g.font = font(800, 44); g.fillText("TuLana", W / 2, H - 92);
+  g.fillStyle = "#6B5B4F"; g.font = font(500, 32); g.fillText("Tu dinero, sin culpa · @tulanaapp", W / 2, H - 46);
+  const b64 = c.toDataURL("image/png").split(",")[1];
+  const text = `${title} 🐑 Llevo mi dinero con TuLana. @tulanaapp`;
+  if (window.AndroidBridge?.shareImage) { try { AndroidBridge.shareImage(b64, text); return; } catch {} }
+  const blob = await (await fetch("data:image/png;base64," + b64)).blob();
+  const file = new File([blob], "tulana-logro.png", { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], text }); return; } catch (e) { if (e?.name === "AbortError") return; } }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "tulana-logro.png"; document.body.append(a); a.click(); a.remove();
+  toast("Imagen descargada: súbela a tus redes");
+}
+function shareWhat(kind, id){
+  if (kind === "reto") { const r = RETOS.find(x => x.id === id); return { kicker:"Reto cumplido", title:r ? r.t : "Reto cumplido", sub:"Un paso más para dominar mi dinero" }; }
+  if (kind === "meta") { const g = goals().find(x => x.id === id) || activeGoal(); return { kicker:"Meta cumplida", title:`Junté ${fmt0(g ? savedFor(g.id) : 0)} para ${g ? g.name : "mi meta"}`, sub:"Ahorrando poco a poco con Merino" }; }
+  if (kind === "racha") return { kicker:"Racha", title:`${S.streak.cur} días seguidos cuidando mi dinero`, sub:"Registro cada gasto, hasta el último antojo", mood:"feliz" };
+  const a = ACHIEVEMENTS.find(x => x[0] === id); return { kicker:"Logro desbloqueado", title:a ? a[1] : "Nuevo logro", sub:a ? a[2] : "" };
+}
 
 // ───────────────────────── Cálculos ─────────────────────────
 function allItems(){
@@ -1004,7 +1156,7 @@ function confirmDraft(){
   { const ks = Object.keys(S.catMemory); if (ks.length > 600) for (const k of ks.slice(0, ks.length - 600)) delete S.catMemory[k]; }
   const acc = S.accounts.find(a=>a.id===d.accountId); if (acc) acc.balance = (acc.balance||0) - total;
   if (d.photo && S.keepPhotos) PhotoDB.put(id, d.photo).catch(() => { rec.hasPhoto = hadPhoto; });
-  let msg = editing ? "Cambios guardados" : "Gasto registrado · +10 XP";
+  let msg = editing ? "Cambios guardados" : `Gasto registrado · +10 XP${costLabel(total) ? " · " + costLabel(total) : ""}`;
   if (!editing) {
     S.xp += 10; bumpStreak();
     if (rec.source === "ticket") { if (isFirst) unlock("primer_ticket"); if (S.receipts.filter(r=>r.source==="ticket").length>=5) unlock("cinco_tickets"); }
@@ -2190,6 +2342,7 @@ function viewHome(){
   return `${header()}
   ${seasonBanner()}
   ${spendCard()}
+  ${weeklyCard()}
   ${nudge()}
   <div class="card">
     <div class="row between"><h2>En qué se va</h2>${imp && total > 0 ? `<span class="pill imp">Impulsivo ${Math.round(imp/total*100)} %</span>`:""}</div>
@@ -2234,7 +2387,7 @@ function viewDetail(){
   return `<div class="top"><button class="link" data-act="go" data-v="history">← Movimientos</button></div>
     <div class="stack" style="gap:4px"><span class="label">${src}</span><h1>${esc(r.merchant)}</h1><p class="muted">${esc(when.charAt(0).toUpperCase() + when.slice(1))}</p></div>
     <div class="card">
-      <div class="row between"><span>${r.total < 0 ? "Te devolvieron" : "Pagaste"}</span><b class="money" style="font-size:24px">${fmt(Math.abs(r.total))}</b></div>
+      <div class="row between"><span>${r.total < 0 ? "Te devolvieron" : "Pagaste"}</span><b class="money" style="font-size:24px">${fmt(Math.abs(r.total))}</b></div>${r.total > 0 ? costLine(r.total) : ""}
       <div class="row between small"><span class="muted">Cuenta</span><span>${esc(accName(r.accountId))}</span></div>
       ${r.ticketTotal != null && Math.abs(r.ticketTotal - r.total) > 0 ? `<div class="row between small"><span class="muted">Total impreso en el ticket</span><span class="money">${fmt(r.ticketTotal)}</span></div>` : ""}
       ${ru ? `<div class="row between small"><span class="muted">Redondeo al cochinito</span><span class="money" style="color:var(--good)">+${fmt(ru)}</span></div>` : ""}
@@ -2300,7 +2453,7 @@ function viewReview(){
       <button class="btn soft sm" data-act="additem" style="align-self:flex-start">+ Agregar artículo o descuento</button>
       <p class="small muted">Para un descuento o una devolución escribe el monto en negativo, por ejemplo −25.</p></div>
     <div class="sumbox">
-      <div class="row"><span>Suma de artículos</span><b class="money" style="font-size:20px">${fmt(total)}</b></div>
+      <div class="row"><span>Suma de artículos</span><b class="money" style="font-size:20px">${fmt(total)}</b></div>${costLine(total)}
       ${d.source !== "manual" ? `<label class="row" style="gap:10px"><span>Total impreso en el ticket</span><input id="rv-total" class="money" inputmode="decimal" value="${d.total != null ? toInput(d.total) : ""}" placeholder="Opcional" style="max-width:140px"></label>` : ""}
       ${mismatch ? `<p class="alert warn">La suma no coincide con el total del ticket: ${diff > 0 ? "faltan" : "sobran"} ${fmt(Math.abs(diff))}. Puede ser un descuento, el IVA o un artículo que no se leyó.</p>
         <div class="row wrap"><button class="btn soft sm" data-act="fixspread">Repartir entre artículos</button><button class="btn soft sm" data-act="fixadjust">${diff < 0 ? "Agregar descuento" : "Agregar la diferencia"}</button><button class="btn ghost sm" data-act="fixusesum">Usar la suma de artículos</button></div>` : ""}
@@ -2327,7 +2480,7 @@ function goalsManageBody(){
 }
 function viewPig(){
   const g = activeGoal();
-  if (!g) return `${header("Cochinito")}${newGoalForm(true)}`;
+  if (!g) return `${header("Cochinito")}${newGoalForm(true)}${retosCard()}`;
   const pct = pigPct(g), s = savedFor(g.id), m = monthlySaveTarget(), sm = savedThisMonth();
   const reasons = {aporte:"Aporte",redondeo:"Redondeo",antojo_evitado:"Antojo evitado",retiro:"Retiro"};
   const hist = S.contributions.filter(c => c.goalId === g.id).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,4);
@@ -2340,7 +2493,7 @@ function viewPig(){
     <div class="stack" style="align-items:center;text-align:center;gap:4px">
       ${pigSVG(pct, ui.pigFrom)}
       <div class="pct">${Math.round(pct)} %</div>
-      <p class="money muted">${fmt(s)} de ${fmt(g.target)}</p></div>
+      <p class="money muted">${fmt(s)} de ${fmt(g.target)}</p>${pct >= 100 ? `<button class="btn sm accent" data-act="share" data-kind="meta" data-id="${g.id}" style="margin-top:6px">Compartir mi meta</button>` : ""}</div>
     ${mascotRow(ui.cheer || pct>=100 ? "celebra" : "feliz", ui.cheer ? say("pig_cheer") : pct>=100 ? say("pig_done") : say("pig_keep", {x: fmt0(Math.max(0, sm))}), {size:"sm"})}
     <div class="card"><h3>Meter una moneda a “${esc(g.name)}”</h3>
       <div class="grid2"><label class="field"><span>Monto</span><input id="pig-amt" inputmode="decimal" placeholder="$50" value="${ui.prefill ? toInput(ui.prefill) : ""}"></label>
@@ -2353,9 +2506,11 @@ function viewPig(){
       <div class="bar"><i style="width:${m?clamp(sm/m*100,0,100):0}%"></i></div>
       <p class="small muted">Suma de todas tus metas. ${sm>=m && m ? "Ya cumpliste este mes." : `Te faltan ${fmt0(Math.max(0,m-sm))}.`}</p></div>
     ${hist.length ? `<div class="card"><h3>Movimientos de esta meta</h3><div class="list">${hist.map(c=>`<div class="li"><span class="dot" style="background:${c.amt<0?"var(--warn)":"var(--mint)"}"></span><div style="min-width:0"><div class="t">${reasons[c.reason]||c.reason}</div><div class="small muted">${dateLabel(c.at)}${c.accountId ? " · " + esc(accName(c.accountId)) : ""}</div></div><span class="money" style="color:${c.amt<0?"var(--warn)":"var(--good)"}">${c.amt<0?"−":"+"}${fmt(Math.abs(c.amt))}</span></div>`).join("")}</div></div>` : ""}
+    ${retosCard()}
     ${fold("metas", "Administrar metas", goalsManageBody(), { extra:`<span class="small muted">${goals().length}</span>` })}
     ${fold("logros", "Logros y sellos", `${stamps}<div class="stack"><div class="row between"><b>Logros</b><span class="small muted">${Object.keys(S.achievements).length} de ${ACHIEVEMENTS.length}</span></div>
-      <div class="badges">${ACHIEVEMENTS.map(([k,t,d])=>`<div class="badge ${S.achievements[k]?"on":""}"><b>${t}</b><span>${d}</span></div>`).join("")}</div></div>`, { extra:`<span class="small muted">${Object.keys(S.achievements).length} de ${ACHIEVEMENTS.length}</span>` })}`;
+      <div class="badges">${ACHIEVEMENTS.map(([k,t,d])=>S.achievements[k] ? `<button class="badge on" data-act="share" data-kind="logro" data-id="${k}" aria-label="Compartir ${t}"><b>${t}</b><span>${d}</span><span class="share-tag">Compartir</span></button>` : `<div class="badge"><b>${t}</b><span>${d}</span></div>`).join("")}</div>
+      ${S.streak.cur >= 3 ? `<button class="btn soft sm" data-act="share" data-kind="racha" style="align-self:flex-start">Compartir mi racha de ${S.streak.cur} días</button>` : ""}</div>`, { extra:`<span class="small muted">${Object.keys(S.achievements).length} de ${ACHIEVEMENTS.length}</span>` })}`;
 }
 
 // ---------- Perfil ----------
@@ -2556,6 +2711,11 @@ const ACT = {
   remtoggle: t => { S.reminders = { ...remCfg(), on: t.checked }; save(); render(); toast(t.checked ? "Recordatorios activados" : "Recordatorios apagados"); },
   remtest: () => { try { AndroidBridge.testReminder(); } catch {} },
   google: () => loginGoogle(),
+  retostart: t => { retosState().active[t.dataset.id] = { start: new Date().toISOString() }; ui.retoDone = null; save(); render(); toast("¡Reto aceptado! Te aviso cuando lo cumplas"); },
+  retoquit: t => { delete retosState().active[t.dataset.id]; save(); render(); },
+  retook: () => { ui.retoDone = null; render(); },
+  weeklyseen: t => { S.weeklySeen = t.dataset.k; save(); render(); },
+  share: t => { if (S.demo) { toast("Sal del ejemplo para compartir tus propios logros"); return; } shareCard(shareWhat(t.dataset.kind, t.dataset.id)).catch(() => toast("No se pudo crear la imagen")); },
   usebackup: () => restoreBackup(),
   keeplocal: () => { ui.chooseBackup = null; render(); backupNow(true); },
   backupnow: () => backupNow(true),
@@ -2649,7 +2809,9 @@ document.addEventListener("change", e => {
 function remCfg(){ const r = S.reminders || {}; return { on: r.on !== false, hour: r.hour ?? 20 }; }
 function reminderPayload(){
   const r = remCfg(), paid = paidFixedMap();
+  const wk = weekStats(0);
   return JSON.stringify({ on: !!S.onboarded && r.on, hour: r.hour, minute: 0, name: S.profile?.name || "",
+    weekly: { wk: wk.key, title: "Tu resumen de la semana 🐑", text: weeklyText(wk) },
     streak: S.streak?.cur || 0, streakLast: S.streak?.last || "",
     fixed: (S.fixed || []).filter(f => f.amt > 0 && f.dueDay).map(f => ({ name: f.name || "tu pago", amt: fmt0(f.amt), dueDay: f.dueDay, paid: paid[f.id] ? monthKey() : "" })) });
 }

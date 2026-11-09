@@ -152,6 +152,12 @@ public class MainActivity extends ComponentActivity {
                 runOnUiThread(() -> signInWithGoogle(clientId));
             }
 
+            // Compartir un logro: la app manda la imagen y Android abre el menú para compartir
+            @JavascriptInterface
+            public void shareImage(String b64, String text) {
+                runOnUiThread(() -> shareLogro(b64, text));
+            }
+
             // Lee el texto de la foto del ticket en el teléfono (ML Kit, sin internet)
             @JavascriptInterface
             public void ocr(String b64, String id) {
@@ -237,6 +243,20 @@ public class MainActivity extends ComponentActivity {
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
+    }
+
+    private void shareLogro(String b64, String text) {
+        try {
+            File dir = new File(getCacheDir(), "share");
+            if (!dir.exists()) dir.mkdirs();
+            File f = new File(dir, "tulana-logro.png");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) { out.write(Base64.decode(b64, Base64.DEFAULT)); }
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", f);
+            Intent send = new Intent(Intent.ACTION_SEND).setType("image/png")
+                    .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TEXT, text)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(send, "Compartir logro"));
+        } catch (Exception ignored) { }
     }
 
     private void signInWithGoogle(String clientId) {
