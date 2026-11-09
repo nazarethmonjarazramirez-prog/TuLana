@@ -10,8 +10,8 @@ android {
         applicationId "mx.cochinito.app"
         minSdk 26
         targetSdk 34
-        versionCode 11
-        versionName "1.1.0"
+        versionCode 12
+        versionName "1.2.0"
     }
 
     // Firma fija de TuLana: todas las versiones llevan la misma, así se actualizan encima sin perder datos.
@@ -52,4 +52,8 @@ dependencies {
     implementation 'com.google.mlkit:text-recognition:16.0.1'
     // Recordatorios diarios aunque la app esté cerrada
     implementation 'androidx.work:work-runtime:2.9.1'
+    // Iniciar sesión con Google (Credential Manager)
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
 }

@@ -223,6 +223,9 @@ button.pill{border:0;cursor:pointer;font:600 12.5px var(--body)}
 .li-btn{width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;color:inherit;font:inherit;cursor:pointer}
 .li-btn:last-child{border-bottom:0}
 .card-btn{width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.acc-pic{width:44px;height:44px;border-radius:50%;flex:none;object-fit:cover;background:var(--sunk);display:grid;place-items:center;font:600 18px var(--display);color:var(--ink)}
+.legal{text-align:center;line-height:1.5}
+.legal a{color:inherit;text-underline-offset:3px}
 .confirm.info{background:var(--sunk)}
 .photo img{width:100%;border-radius:12px;display:block}
 .item.neg{background:var(--mint-soft)}
@@ -397,7 +400,7 @@ const aiAvailable = () => !!getKey() || hasServer();
 async function callServer(body, signal){
   let res;
   try {
-    res = await fetch(SERVER_URL, { method:"POST", signal, headers:{ "content-type":"application/json", ...(SERVER_TOKEN && !SERVER_TOKEN.startsWith("__") ? { "x-tulana-token": SERVER_TOKEN } : {}) }, body: JSON.stringify(body) });
+    res = await fetch(SERVER_URL, { method:"POST", signal, headers:{ "content-type":"application/json", "x-tulana-device": deviceId(), ...(cuenta()?.token ? { authorization: "Bearer " + cuenta().token } : {}), ...(SERVER_TOKEN && !SERVER_TOKEN.startsWith("__") ? { "x-tulana-token": SERVER_TOKEN } : {}) }, body: JSON.stringify(body) });
   } catch (e) { if (e?.name === "AbortError") throw { code:"cancelled" }; throw { code:"offline" }; }
   if (res.status === 429) throw { code:"rate_limited" };
   if (res.status === 401) throw { code:"server_auth" };
@@ -405,6 +408,182 @@ async function callServer(body, signal){
   const data = await res.json();
   return String(data.text || "");
 }
+
+// ───────────────────────── Cuenta de Google y respaldo ─────────────────────────
+// El ID de cliente web de Google no es secreto: identifica a TuLana ante Google.
+const GOOGLE_CLIENT_ID = "__GOOGLE_CLIENT_ID__";
+const LEGAL_URL = "https://nazarethmonjarazramirez-prog.github.io/TuLana/";
+const CUENTA_KEY = "tulana-cuenta", DEVICE_KEY = "tulana-device";
+function cuenta(){ try { return JSON.parse(localStorage.getItem(CUENTA_KEY) || "null"); } catch { return null; } }
+function setCuenta(c){ try { c ? localStorage.setItem(CUENTA_KEY, JSON.stringify(c)) : localStorage.removeItem(CUENTA_KEY); } catch {} }
+function deviceId(){ try { let d = localStorage.getItem(DEVICE_KEY); if (!d) { d = uid() + uid(); localStorage.setItem(DEVICE_KEY, d); } return d; } catch { return ""; } }
+const cuentasOn = () => hasServer() && !!window.AndroidBridge?.googleSignIn && !GOOGLE_CLIENT_ID.startsWith("__");
+const legalLine = () => `<p class="small muted legal">Al continuar aceptas los <a href="${LEGAL_URL}terminos.html">Términos y condiciones</a> y el <a href="${LEGAL_URL}privacidad.html">Aviso de privacidad</a>.</p>`;
+
+async function api(method, path, body){
+  const c = cuenta();
+  let res;
+  try {
+    res = await fetch(SERVER_URL.replace(/\/+$/, "") + path, { method,
+      headers:{ "content-type":"application/json", ...(c?.token ? { authorization:"Bearer " + c.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined });
+  } catch { throw { code:"offline" }; }
+  let data = {}; try { data = await res.json(); } catch {}
+  if (res.status === 401 && path !== "/auth/google") {
+    if (cuenta()) { setCuenta(null); ui.sesionVencida = true; toast("Tu sesión terminó. Vuelve a entrar con Google en Perfil."); if (ui.view === "profile") render(); }
+    throw { code:"no_session" };
+  }
+  if (!res.ok) throw { code: data.error || "other", status: res.status };
+  return data;
+}
+
+// El respaldo va comprimido: ocupa unas 10 veces menos
+async function packState(data){
+  const json = JSON.stringify({ ...data, _real:null, demo:false });
+  if (!window.CompressionStream) return "js1:" + json;
+  const buf = new Uint8Array(await new Response(new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());
+  let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return "gz1:" + btoa(bin);
+}
+async function unpackState(str){
+  if (str.startsWith("js1:")) return JSON.parse(str.slice(4));
+  if (!str.startsWith("gz1:")) throw { code:"bad_backup" };
+  const bin = atob(str.slice(4)), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return JSON.parse(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+}
+const realData = () => S.demo ? S._real : S;
+
+let bkTimer = null, bkBusy = false;
+function scheduleBackup(ms = 20000){ if (!cuenta()?.token) return; clearTimeout(bkTimer); bkTimer = setTimeout(() => backupNow(false), ms); }
+async function backupNow(manual){
+  const c = cuenta(), data = realData();
+  if (!c?.token || bkBusy || !data?.onboarded || ui.chooseBackup) return;   // mientras eliges qué datos conservar, no se sube nada
+  clearTimeout(bkTimer);
+  if (!manual && c.subido && c.subido >= (data.updatedAt || 0)) return;
+  bkBusy = true; ui.bkState = "subiendo"; paintBk();
+  try {
+    const r = await api("PUT", "/respaldo", { datos: await packState(data), actualizado: data.updatedAt || Date.now() });
+    const cc = cuenta(); if (cc) { cc.subido = r.actualizado; cc.subidoEn = Date.now(); setCuenta(cc); }
+    ui.bkState = "ok"; if (manual) toast("Respaldo guardado");
+  } catch (e) {
+    if (e.code === "no_session") return;
+    ui.bkState = e.code === "offline" ? "offline" : "error";
+    if (manual) toast(e.code === "offline" ? "Sin internet: lo respaldo cuando vuelvas a tener conexión" : "No se pudo respaldar. Lo vuelvo a intentar más tarde.");
+    if (e.code === "offline") scheduleBackup(120000);
+  } finally { bkBusy = false; paintBk(); }
+}
+function haceCuanto(t){
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "hace un momento";
+  if (m < 60) return `hace ${m} min`;
+  if (m < 24 * 60) return `hace ${Math.round(m / 60)} h`;
+  return new Date(t).toLocaleDateString("es-MX", { day:"numeric", month:"short" });
+}
+const fechaHora = t => new Date(t).toLocaleString("es-MX", { day:"numeric", month:"short", hour:"numeric", minute:"2-digit" });
+function bkStatus(){
+  const c = cuenta(); if (!c) return "";
+  if (ui.bkState === "subiendo") return "Respaldando…";
+  if (ui.bkState === "offline") return "Sin internet: el respaldo está pendiente.";
+  if (ui.bkState === "error") return "No se pudo respaldar la última vez. Lo vuelvo a intentar solo.";
+  return c.subidoEn ? `Último respaldo: ${haceCuanto(c.subidoEn)}. Se respalda solo cada vez que registras algo.` : "Se respalda solo cada vez que registras algo.";
+}
+function paintBk(){ const el = $("#bk-status"); if (el) el.textContent = bkStatus(); }
+
+// Iniciar sesión con Google: Android abre el selector de cuentas y regresa una credencial
+let googleCb = null;
+window.__googleDone = (token, err) => { const cb = googleCb; googleCb = null; if (cb) cb(token, err); };
+function googleToken(){
+  return new Promise((res, rej) => {
+    googleCb = (t, e) => t ? res(t) : rej({ code: String(e || "error").split(":")[0], detail: e });
+    try { AndroidBridge.googleSignIn(GOOGLE_CLIENT_ID); } catch { googleCb = null; rej({ code:"error" }); }
+  });
+}
+const LOGIN_ERR = {
+  no_account: "No encontré una cuenta de Google en este teléfono. Agrégala en Ajustes → Cuentas y vuelve a intentar.",
+  offline: "Necesitas internet para entrar con Google.",
+  no_db: "Al servidor le falta conectar la base de datos.",
+  no_google_client: "Al servidor le falta el ID de cliente de Google.",
+  wrong_client: "La configuración de Google no coincide con la del servidor.",
+};
+async function loginGoogle(){
+  if (ui.loginBusy || !cuentasOn()) return;
+  ui.loginBusy = true; render();
+  try {
+    const idToken = await googleToken();
+    const r = await api("POST", "/auth/google", { idToken });
+    setCuenta({ token:r.token, email:r.usuario.email, nombre:r.usuario.nombre, foto:r.usuario.foto, subido:0, subidoEn:0 });
+    ui.sesionVencida = false; ui.bkState = null;
+    const local = realData(), first = (r.usuario.nombre || "").split(" ")[0];
+    if (r.respaldo && !local?.onboarded) { ui.loginBusy = false; await restoreBackup(); return; }
+    if (r.respaldo) { ui.chooseBackup = r.respaldo; ui.view = "profile"; toast(`Hola${first ? ", " + first : ""}. Encontré un respaldo en tu cuenta.`); }
+    else if (local?.onboarded) { toast("Listo: tus datos se respaldan en tu cuenta"); backupNow(false); }
+    else { if (!S.profile.name && first) S.profile.name = first; ui.onb = Math.max(ui.onb, 1); toast(`Hola${first ? ", " + first : ""}. Terminemos tu perfil.`); }
+  } catch (e) {
+    if (e.code !== "cancel") toast(LOGIN_ERR[e.code] || `No se pudo entrar con Google (${e.detail || e.code}).`);
+  } finally { ui.loginBusy = false; render(); }
+}
+async function restoreBackup(){
+  ui.loginBusy = true; render();
+  try {
+    const r = await api("GET", "/respaldo");
+    if (!r.datos) throw { code:"empty" };
+    const data = await unpackState(r.datos);
+    S = normalizeState(Object.assign(freshState(), data)); S.demo = false; S._real = null;
+    save();
+    const c = cuenta(); if (c) { c.subido = S.updatedAt; c.subidoEn = Date.now(); setCuenta(c); }
+    ui.chooseBackup = null; ui.onb = 0; ui.view = "home"; ui.goalId = null;
+    toast(`Recuperé tus datos del ${fechaHora(r.actualizado)}`);
+  } catch (e) {
+    toast(e.code === "offline" ? "Necesitas internet para recuperar tu respaldo." : "No pude leer tu respaldo. Intenta de nuevo.");
+  } finally { ui.loginBusy = false; render(); window.scrollTo(0, 0); }
+}
+async function logoutGoogle(){
+  await backupNow(false);
+  const c = cuenta(); setCuenta(null); ui.chooseBackup = null; ui.confirmDelAcc = false; render();
+  toast("Cerraste sesión. Tus datos siguen en este teléfono.");
+  try { await fetch(SERVER_URL.replace(/\/+$/, "") + "/salir", { method:"POST", headers:{ authorization:"Bearer " + c.token } }); } catch {}
+}
+async function deleteAccount(){
+  try {
+    await api("DELETE", "/cuenta");
+    setCuenta(null); ui.confirmDelAcc = false; ui.chooseBackup = null; render();
+    toast("Eliminé tu cuenta y tu respaldo. Tus datos siguen en este teléfono.");
+  } catch (e) { if (e.code !== "no_session") toast(e.code === "offline" ? "Necesitas internet para eliminar tu cuenta." : "No se pudo eliminar. Intenta de nuevo."); }
+}
+
+function accountCard(){
+  if (!cuentasOn()) return "";
+  const c = cuenta();
+  if (!c) return `<div class="card" id="acc-card"><div class="row between"><h3>Tu cuenta</h3><span class="pill">Sin cuenta</span></div>
+    <p class="small muted">${ui.sesionVencida ? "Tu sesión terminó. Vuelve a entrar para seguir respaldando tus datos." : "Entra con Google para respaldar tus datos. Si cambias o pierdes tu celular, entras y recuperas todo."}</p>
+    <button class="btn sm accent" data-act="google" ${ui.loginBusy ? "disabled" : ""} style="align-self:flex-start">${ui.loginBusy ? "Conectando…" : "Continuar con Google"}</button>
+    ${legalLine()}</div>`;
+  const initial = esc((c.nombre || c.email || "?").trim()[0].toUpperCase());
+  const avatar = c.foto ? `<img src="${esc(c.foto)}" alt="" referrerpolicy="no-referrer" class="acc-pic" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'acc-pic',textContent:'${initial}'}))">` : `<span class="acc-pic">${initial}</span>`;
+  let body;
+  if (ui.chooseBackup) body = `<div class="confirm info"><b>Encontré un respaldo del ${fechaHora(ui.chooseBackup.actualizado)}</b>
+    <p class="small">Este teléfono también tiene datos. ¿Con cuáles te quedas? Lo que no elijas se reemplaza.</p>
+    <div class="row wrap"><button class="btn sm" data-act="usebackup" ${ui.loginBusy ? "disabled" : ""}>Usar el respaldo</button><button class="btn ghost sm" data-act="keeplocal">Quedarme con este teléfono</button></div></div>`;
+  else if (ui.confirmDelAcc) body = `<div class="confirm"><b>¿Eliminar tu cuenta?</b>
+    <p class="small">Se borran tu cuenta y tu respaldo en la nube. Tus datos siguen en este teléfono. No se puede deshacer.</p>
+    <div class="row"><button class="btn sm danger" data-act="delacc">Sí, eliminar</button><button class="btn ghost sm" data-act="nodelacc">Cancelar</button></div></div>`;
+  else body = `<p class="small muted" id="bk-status">${bkStatus()}</p>
+    <div class="row wrap"><button class="btn soft sm" data-act="backupnow">Respaldar ahora</button><button class="btn ghost sm" data-act="logout">Cerrar sesión</button></div>
+    <button class="link small" data-act="askdelacc" style="align-self:flex-start">Eliminar mi cuenta</button>`;
+  return `<div class="card" id="acc-card"><div class="row between"><h3>Tu cuenta</h3><span class="pill good">Respaldo activo</span></div>
+    <div class="row" style="gap:12px">${avatar}<div class="stack" style="gap:2px;min-width:0"><b>${esc(c.nombre || "Tu cuenta")}</b><span class="small muted" style="overflow-wrap:anywhere">${esc(c.email)}</span></div></div>
+    ${body}
+    <p class="small muted">Las fotos de los tickets no se respaldan; se quedan en este teléfono.</p></div>`;
+}
+function dataNote(){
+  if (cuenta()) return `<p class="small muted">Tus datos se guardan en este teléfono y se respaldan en tu cuenta de Google.</p>`;
+  return `<p class="small muted">Tus datos se guardan solo en este teléfono. Si desinstalas la app se borran.${cuentasOn() ? " Para no perderlos, entra con Google en <b>Tu cuenta</b>." : ""}</p>`;
+}
+{ const s0 = save; save = function(...a){ const out = s0.apply(this, a); scheduleBackup(); return out; }; }
+window.__onPause = () => { if (cuenta()?.token) backupNow(false); };
+window.addEventListener("online", () => scheduleBackup(3000));
+setTimeout(() => scheduleBackup(5000), 0);
 
 // ───────────────────────── Cálculos ─────────────────────────
 function allItems(){
@@ -1769,8 +1948,12 @@ function viewOnboarding(){
       <div style="padding-top:6px">${mascotRow("saludo", say("welcome"), {size:"hero"})}</div>
       <div class="stack"><span class="label">TuLana · tu dinero, sin culpa</span><h1 style="font-size:36px">Llena tu cochinito de cristal</h1>
       <p class="muted">Escanea tus tickets, mira en qué se va tu dinero y convierte cada antojo que te ahorras en una moneda visible.</p></div>
-      <div class="foot"><button class="btn accent block" data-act="onb" data-d="1">Empezar · 2 minutos</button>
-      <button class="link" data-act="demo">Probar con datos de ejemplo</button></div></div>`;
+      <div class="foot">${!cuentasOn() ? `<button class="btn accent block" data-act="onb" data-d="1">Empezar · 2 minutos</button>`
+        : cuenta() ? `<p class="small muted" style="text-align:center">Entraste como <b>${esc(cuenta().email)}</b></p><button class="btn accent block" data-act="onb" data-d="1">Continuar</button>`
+        : `<button class="btn accent block" data-act="google" ${ui.loginBusy ? "disabled" : ""}>${ui.loginBusy ? "Conectando…" : "Continuar con Google"}</button>
+      <button class="btn ghost block" data-act="onb" data-d="1">Continuar sin cuenta</button>`}
+      <button class="link" data-act="demo">Probar con datos de ejemplo</button>
+      ${legalLine()}</div></div>`;
   }
   if (st === 1) {
     canNext = !!P.name.trim();
@@ -2152,6 +2335,7 @@ function viewProfile(){
   const chip = (field, val, label) => `<button class="chip" data-act="set" data-f="${field}" data-val="${val}" aria-pressed="${String(P[field.split(".")[1]])===String(val)}">${label}</button>`;
   const theme = themeCard().replace(/^<div class="card"><h3>Temporadas<\/h3>/, "").replace(/<\/div>\s*$/, "");
   return `${header("Perfil")}
+  ${accountCard()}
   ${fold("perfil", "Tú", `<label class="field"><span>Nombre</span><input id="p-name" data-live="profile.name" value="${esc(P.name)}"></label>
     <div class="stack" style="gap:6px"><span class="label">¿Estudias?</span><div class="chips">${chip("profile.student", true, "Sí")}${chip("profile.student", false, "No")}</div></div>
     <div class="stack" style="gap:6px"><span class="label">¿Trabajas?</span><div class="chips">${WORK_OPTIONS.map(w=>chip("profile.work", w, w)).join("")}</div></div>`, { open:true })}
@@ -2184,7 +2368,7 @@ function viewProfile(){
     <button class="btn soft sm" data-act="remtest" style="align-self:flex-start">Probar notificación</button>` : ""}</div>` : ""}
   <div class="card"><h3>Datos</h3>
     ${dataCardBody()}
-    <p class="small muted">Tus datos se guardan solo en este teléfono. Si desinstalas la app se borran.</p></div>`;
+    ${dataNote()}</div>`;
 }
 function dataCardBody(){
   if (ui.confirmReset) return `<div class="confirm"><b>¿Borrar todo y empezar de cero?</b><p class="small">Se eliminan tus movimientos, tus metas y tus logros. No se puede deshacer.</p><div class="row"><button class="btn sm danger" data-act="reset">Sí, borrar todo</button><button class="btn ghost sm" data-act="noreset">Cancelar</button></div></div>`;
@@ -2331,6 +2515,14 @@ const ACT = {
   delkey: () => { setKey(""); render(); toast("Clave eliminada"); },
   remtoggle: t => { S.reminders = { ...remCfg(), on: t.checked }; save(); render(); toast(t.checked ? "Recordatorios activados" : "Recordatorios apagados"); },
   remtest: () => { try { AndroidBridge.testReminder(); } catch {} },
+  google: () => loginGoogle(),
+  usebackup: () => restoreBackup(),
+  keeplocal: () => { ui.chooseBackup = null; render(); backupNow(true); },
+  backupnow: () => backupNow(true),
+  logout: () => logoutGoogle(),
+  askdelacc: () => { ui.confirmDelAcc = true; render(); },
+  nodelacc: () => { ui.confirmDelAcc = false; render(); },
+  delacc: () => deleteAccount(),
   askreset: () => { ui.confirmReset = true; render(); },
   noreset: () => { ui.confirmReset = false; render(); },
   reset: () => { S = freshState(); ui.onb = 0; ui.view = "home"; ui.goalId = null; ui.confirmReset = false; save(); render(); },

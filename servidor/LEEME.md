@@ -1,4 +1,4 @@
-# Servidor de IA de TuLana
+# Servidor de TuLana (IA y cuentas)
 
 Este Worker de Cloudflare guarda la clave de la IA. La app lo usa para leer tickets y para el chat de Merino,
 sin que cada persona tenga que poner su propia clave. Si el servidor no responde, la app sigue funcionando
@@ -21,3 +21,21 @@ pero tiene menos lecturas gratis al día). Si en lugar de Gemini pones `ANTHROPI
 
 Nota de privacidad: en el plan gratuito de Gemini, Google puede usar lo que se envía para mejorar sus productos.
 No envíes datos sensibles; los tickets normalmente solo traen productos y precios.
+
+## Cuentas con Google y respaldo en la nube
+
+El mismo Worker guarda las cuentas y los respaldos en una base de datos D1 de Cloudflare.
+
+1. Cloudflare → Storage & databases → D1 SQL database → Create database → nombre `tulana-db`.
+2. Worker `tulana-ia` → Settings → Bindings → Add binding → D1 database → nombre de variable `DB` → `tulana-db`.
+   Las tablas se crean solas la primera vez.
+3. Google Cloud (console.cloud.google.com) → proyecto TuLana → Google Auth Platform:
+   - Cliente **Android**: paquete `mx.cochinito.app`, SHA-1 de la firma de TuLana
+     `16:64:BB:BA:0E:E2:EE:96:F9:BC:2A:C7:C5:9E:88:0F:DC:78:EB:D3`.
+   - Cliente **Aplicación web**: su ID de cliente va en `worker.js` (GOOGLE_CLIENT_ID) y en la app.
+   - Público → Publicar app.
+4. Pega el `worker.js` nuevo en el Worker → Deploy. La dirección del Worker debe decir `"cuentas":true`.
+
+Qué guarda: nombre, correo y foto de la cuenta de Google; una copia comprimida de los datos de la app; sesiones
+(solo su huella, no el token); y un conteo diario de uso de la IA por persona (se borra a los 3 días).
+"Eliminar mi cuenta" en la app borra todo de la base de datos. Variable opcional: `LIMITE_IA_DIA` (por defecto 150).

@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -26,12 +27,23 @@ import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.credentials.Credential;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.CustomCredential;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.exceptions.GetCredentialCancellationException;
+import androidx.credentials.exceptions.GetCredentialException;
+import androidx.credentials.exceptions.NoCredentialException;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebViewAssetLoader;
 
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
@@ -134,6 +146,12 @@ public class MainActivity extends ComponentActivity {
             @JavascriptInterface
             public boolean notificationsAllowed() { return Reminders.allowed(MainActivity.this); }
 
+            // Iniciar sesión con Google: abre el selector de cuentas del teléfono y regresa la credencial a la app
+            @JavascriptInterface
+            public void googleSignIn(String clientId) {
+                runOnUiThread(() -> signInWithGoogle(clientId));
+            }
+
             // Lee el texto de la foto del ticket en el teléfono (ML Kit, sin internet)
             @JavascriptInterface
             public void ocr(String b64, String id) {
@@ -219,6 +237,50 @@ public class MainActivity extends ComponentActivity {
                 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
+    }
+
+    private void signInWithGoogle(String clientId) {
+        try {
+            GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(clientId).build();
+            GetCredentialRequest request = new GetCredentialRequest.Builder().addCredentialOption(option).build();
+            CredentialManager.create(this).getCredentialAsync(this, request, new CancellationSignal(), ContextCompat.getMainExecutor(this),
+                    new CredentialManagerCallback<GetCredentialResponse, GetCredentialException>() {
+                        @Override
+                        public void onResult(GetCredentialResponse response) {
+                            Credential c = response.getCredential();
+                            if (c instanceof CustomCredential && GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(c.getType())) {
+                                try {
+                                    googleDone(GoogleIdTokenCredential.createFrom(c.getData()).getIdToken(), null);
+                                } catch (Exception e) {
+                                    googleDone(null, "error:parse");
+                                }
+                            } else {
+                                googleDone(null, "error:type");
+                            }
+                        }
+
+                        @Override
+                        public void onError(GetCredentialException e) {
+                            String code = e instanceof GetCredentialCancellationException ? "cancel"
+                                    : e instanceof NoCredentialException ? "no_account" : "error";
+                            googleDone(null, code + ":" + e.getClass().getSimpleName() + ":" + e.getMessage());
+                        }
+                    });
+        } catch (Exception e) {
+            googleDone(null, "error:" + e.getClass().getSimpleName());
+        }
+    }
+
+    private void googleDone(String token, String err) {
+        String js = "window.__googleDone && window.__googleDone(" + (token == null ? "null" : JSONObject.quote(token)) + "," + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Al salir de la app, se sube el respaldo pendiente
+        if (web != null) web.evaluateJavascript("window.__onPause && window.__onPause()", null);
     }
 
     @Override
