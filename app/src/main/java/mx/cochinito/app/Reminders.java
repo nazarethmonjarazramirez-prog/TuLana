@@ -40,6 +40,15 @@ public final class Reminders {
         {"¿Guardaste el ticket?", "Tómale foto antes de que se pierda y yo lo clasifico."},
     };
 
+    private static final String[][] GENERAL_EN = {
+        {"How did your money do today?", "Scan today's receipts. It takes less than a minute."},
+        {"Merino misses you 🐑", "Log today's expenses and see how much you have left this month."},
+        {"That craving counts too", "Log your small purchases: they're the ones that slip away."},
+        {"Your piggy bank is waiting", "Every peso you set aside today gets you closer to your goal."},
+        {"One minute for your money", "Check where your money went this week."},
+        {"Did you keep the receipt?", "Snap it before it gets lost and I'll sort it."},
+    };
+
     private Reminders() { }
 
     private static SharedPreferences prefs(Context c) { return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
@@ -100,17 +109,20 @@ public final class Reminders {
         try { s = new JSONObject(p.getString("state", "{}")); } catch (Exception e) { return; }
         if (!s.optBoolean("on", false)) return;
 
-        String[] msg = paymentMessage(s);
+        boolean en = "en".equals(s.optString("lang", "es"));
+        String[] msg = paymentMessage(s, en);
         if (msg == null) msg = weeklyMessage(s);
         if (msg == null) {
             // Si ya abriste la app hoy, Merino no molesta
             if (today.equals(p.getString("lastOpen", ""))) return;
             int streak = s.optInt("streak", 0);
             if (streak > 0 && day(-1).equals(s.optString("streakLast", ""))) {
-                msg = new String[]{"Tu racha de " + streak + (streak == 1 ? " día" : " días") + " está en riesgo 🔥",
+                msg = en ? new String[]{"Your " + streak + "-day streak is at risk 🔥", "Log an expense today to keep it."}
+                        : new String[]{"Tu racha de " + streak + (streak == 1 ? " día" : " días") + " está en riesgo 🔥",
                         "Registra un gasto hoy para no perderla."};
             } else {
-                msg = GENERAL[Calendar.getInstance().get(Calendar.DAY_OF_YEAR) % GENERAL.length];
+                String[][] g = en ? GENERAL_EN : GENERAL;
+                msg = g[Calendar.getInstance().get(Calendar.DAY_OF_YEAR) % g.length];
             }
         }
         if (show(c, msg[0], msg[1])) p.edit().putString("lastNotified", today).apply();
@@ -129,7 +141,7 @@ public final class Reminders {
         return title.isEmpty() || text.isEmpty() ? null : new String[]{title, text};
     }
 
-    private static String[] paymentMessage(JSONObject s) {
+    private static String[] paymentMessage(JSONObject s, boolean en) {
         JSONArray fx = s.optJSONArray("fixed");
         if (fx == null) return null;
         Calendar cal = Calendar.getInstance();
@@ -143,10 +155,12 @@ public final class Reminders {
             boolean paidThisMonth = month.equals(f.optString("paid", ""));
             String name = f.optString("name", "tu pago"), amt = f.optString("amt", "");
             if (due == dom && !paidThisMonth)
-                return new String[]{"Hoy vence " + name, "Son " + amt + ". Cuando lo pagues, márcalo en TuLana."};
+                return en ? new String[]{name + " is due today", "It's " + amt + ". When you pay it, mark it in TuLana."}
+                        : new String[]{"Hoy vence " + name, "Son " + amt + ". Cuando lo pagues, márcalo en TuLana."};
             boolean tomorrow = due == dom + 1 || (dom == last && f.optInt("dueDay", 0) == 1);
             if (tomorrow && (!paidThisMonth || dom == last))
-                return new String[]{"Mañana vence " + name, "Son " + amt + ". Ya lo tengo apartado de lo que puedes gastar."};
+                return en ? new String[]{name + " is due tomorrow", "It's " + amt + ". I've already set it aside from what you can spend."}
+                        : new String[]{"Mañana vence " + name, "Son " + amt + ". Ya lo tengo apartado de lo que puedes gastar."};
         }
         return null;
     }
