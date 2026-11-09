@@ -430,7 +430,7 @@ async function api(method, path, body){
   } catch { throw { code:"offline" }; }
   let data = {}; try { data = await res.json(); } catch {}
   if (res.status === 401 && path !== "/auth/google") {
-    if (cuenta()) { setCuenta(null); ui.sesionVencida = true; toast("Tu sesión terminó. Vuelve a entrar con Google en Perfil."); if (ui.view === "profile") render(); }
+    if (cuenta()) { setCuenta(null); ui.sesionVencida = true; toast("Tu sesión terminó. Vuelve a entrar con Google en Configuración."); if (ui.view === "profile") render(); }
     throw { code:"no_session" };
   }
   if (!res.ok) throw { code: data.error || "other", status: res.status };
@@ -872,8 +872,8 @@ async function imageToBlob(file, maxDim=1600){
 }
 const MODEL_FAST = "claude-haiku-5-5", MODEL_STRONG = "claude-sonnet-5-5";
 const AI_ERRORS = {
-  no_key:"Para leer fotos con IA agrega tu clave de la API de Claude en Perfil. Mientras, puedes pegar el texto del ticket o registrarlo a mano.",
-  bad_key:"La clave de la API no es válida. Revísala en Perfil.",
+  no_key:"Para leer fotos con IA agrega tu clave de la API de Claude en Configuración. Mientras, puedes pegar el texto del ticket o registrarlo a mano.",
+  bad_key:"La clave de la API no es válida. Revísala en Configuración.",
   rate_limited:"Hiciste muchas lecturas seguidas o se acabó tu saldo de la API. Espera un momento o revisa tu cuenta.",
   overloaded:"El servicio de IA está saturado. Inténtalo en un minuto.",
   offline:"Sin conexión a internet. Conéctate para leer el ticket con IA, o regístralo a mano.",
@@ -1053,6 +1053,7 @@ const IC = {
   scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg>',
   pig:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9.5c1.2 0 2 .9 2 2s-.8 2-2 2M5 11c0-3.3 3.1-6 7-6s7 2.7 7 6-3.1 6-7 6c-.7 0-1.3-.1-2-.2L8 19H6.5l.3-2.6C5.7 15.3 5 13.3 5 11zM10 5V3.5M15 10h.01"/></svg>',
   list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
   camera:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
 };
@@ -1697,14 +1698,14 @@ function offlineAnswer(q){
   if (has(/GASTO MAS|EN QUE GASTO|SE ME VA|SE VA MI|CATEGORIA|EN QUE SE VA|MAYOR GASTO/)) {
     if (!cats.length) return "Todavía no tienes gastos este mes. Escanea tus tickets y te digo en qué se te va.";
     const tot = cats.reduce((a,[,v]) => a+v, 0);
-    return `Este mes llevas ${fmt0(tot)} en gastos. Donde más gastas:\n` + cats.slice(0, 3).map(([c,v]) => `- ${CATS[c].n}: ${fmt0(v)} (${Math.round(v/tot*100)} %)`).join("\n") + `\nSi quieres bajarle a ${CATS[cats[0][0]].n.toLowerCase()}, ponle un presupuesto en Perfil y te aviso cuando vayas en 80 %.`;
+    return `Este mes llevas ${fmt0(tot)} en gastos. Donde más gastas:\n` + cats.slice(0, 3).map(([c,v]) => `- ${CATS[c].n}: ${fmt0(v)} (${Math.round(v/tot*100)} %)`).join("\n") + `\nSi quieres bajarle a ${CATS[cats[0][0]].n.toLowerCase()}, ponle un presupuesto en Configuración y te aviso cuando vayas en 80 %.`;
   }
   if (has(/ANTOJO|IMPULS|HORMIGA|CAPRICHO/)) {
     const ant = Math.max(0, m.by.antojos || 0), tot = Math.max(1, cats.reduce((a,[,v]) => a+v, 0));
     return `Este mes llevas ${fmt0(ant)} en antojos (${Math.round(ant/tot*100)} % de tus gastos). Tres trucos que funcionan:\n- Espera 24 horas antes de una compra que no tenías planeada.\n- Lleva tu botella de agua y un snack de casa.\n- Cuando te contengas, regístralo como "antojo evitado" en el cochinito: vale más XP.`;
   }
   if (has(/QUINCENA|PRESUPUESTO|50 30 20|ORGANIZ|REPARTIR|REPARTO|DISTRIBU/)) {
-    if (!mi) return "Primero registra tus ingresos en Perfil (con cada cuánto te pagan) y te armo el reparto. Una regla sencilla es 50/30/20: 50 % necesidades, 30 % gustos y 20 % ahorro.";
+    if (!mi) return "Primero registra tus ingresos en Configuración (con cada cuánto te pagan) y te armo el reparto. Una regla sencilla es 50/30/20: 50 % necesidades, 30 % gustos y 20 % ahorro.";
     const q2 = (P.incomes || []).some(i => i.freq === "quincenal"), base = q2 ? mi / 2 : mi, lbl = q2 ? "cada quincena" : "al mes";
     return `Una regla sencilla es 50/30/20. Con tus ingresos (${fmt0(base)} ${lbl}) quedaría así:\n- Necesidades (50 %): ${fmt0(base*.5)}\n- Gustos (30 %): ${fmt0(base*.3)}\n- Ahorro (20 %): ${fmt0(base*.2)}\nHoy tus gastos fijos son ${fmt0(fixedTotal())} al mes y tu plan de ahorro es ${fmt0(ms)}.` + (q2 ? " Paga los fijos que vencen antes del día 15 con la primera quincena y los demás con la segunda." : "");
   }
@@ -1712,7 +1713,7 @@ function offlineAnswer(q){
     const gs = goals(); if (!gs.length) return "Aún no tienes metas. Crea una en Cochinito y te digo cuánto te falta y en cuánto tiempo llegas.";
     const lines = gs.map(g => { const left = Math.max(0, g.target - savedFor(g.id)); return `- ${g.name}: llevas ${fmt0(savedFor(g.id))} de ${fmt0(g.target)}${left ? `, te faltan ${fmt0(left)}` : ", ¡ya la cumpliste!"}`; });
     const left = gs.reduce((a,g) => a + Math.max(0, g.target - savedFor(g.id)), 0), months = ms ? Math.ceil(left / ms) : 0;
-    return lines.join("\n") + (ms && left ? `\nAhorrando ${fmt0(ms)} al mes las completas en unos ${months} ${months === 1 ? "mes" : "meses"}. Para llegar antes, sube tu porcentaje de ahorro en Perfil o activa el redondeo en cada ticket.` : "");
+    return lines.join("\n") + (ms && left ? `\nAhorrando ${fmt0(ms)} al mes las completas en unos ${months} ${months === 1 ? "mes" : "meses"}. Para llegar antes, sube tu porcentaje de ahorro en Configuración o activa el redondeo en cada ticket.` : "");
   }
   if (has(/EMERGENCIA|IMPREVISTO|COLCHON|COLCHONCITO/)) {
     const base = fixedTotal() || Math.round(mi * .5);
@@ -1724,12 +1725,12 @@ function offlineAnswer(q){
   }
   if (has(/INVERT|CETES|INVERSION|RENDIMIENTO|AFORE|BOLSA DE VALORES|INTERESES GANAR/)) return "Cuando ya tengas tu fondo de emergencia, puedes poner a trabajar tu ahorro. Una opción muy usada en México son los CETES: deuda del gobierno que se compra en cetesdirecto.com desde $100, con bajo riesgo. Antes de invertir, compara rendimientos, plazos y comisiones. No soy asesor financiero, así que no te recomiendo un producto específico; la CONDUSEF tiene guías oficiales para comparar.";
   if (has(/FIJO|RENTA|MIS PAGOS|VENCE|PAGAR /)) {
-    if (!S.fixed.length) return "No tienes gastos fijos registrados. Agrégalos en Perfil con su día de pago y te aviso antes de que venzan.";
+    if (!S.fixed.length) return "No tienes gastos fijos registrados. Agrégalos en Configuración con su día de pago y te aviso antes de que venzan.";
     const paid = paidFixedMap();
     return "Tus gastos fijos de este mes:\n" + S.fixed.map(f => `- ${f.name}: ${fmt0(f.amt)}, ${paid[f.id] ? "ya pagado" : dueInfo(f).txt.toLowerCase()}`).join("\n");
   }
   if (has(/INGRESO|GANO|SUELDO|BECA|ME ENTRA|ME PAGAN|COBRO/)) {
-    if (!(P.incomes || []).length) return "No tienes ingresos registrados. Agrégalos en Perfil con cada cuánto te pagan.";
+    if (!(P.incomes || []).length) return "No tienes ingresos registrados. Agrégalos en Configuración con cada cuánto te pagan.";
     return `Te entran unos ${fmt0(mi)} al mes:\n` + P.incomes.map(i => `- ${i.name || "Ingreso"}: ${fmt0(i.amt)} ${FREQS[i.freq]?.n.toLowerCase() || ""}`).join("\n") + `\nEste mes ya registraste ${fmt0(incomeThisMonth())} recibidos.`;
   }
   return "Esa todavía no la sé responder sin IA. Puedo ayudarte con estos temas: en qué gastas más, cuánto puedes gastar, cómo repartir tu quincena, tus metas, fondo de emergencia, tarjetas de crédito o tus pagos fijos.";
@@ -1739,8 +1740,8 @@ const CHAT_ERRORS = {
   not_granted:"No diste permiso para usar Claude en esta app. Puedes permitirlo y volver a preguntar.",
   rate_limited:"Hiciste muchas preguntas seguidas. Espera un momento y vuelve a intentar.",
   unavailable:"El chat funciona al abrir la app dentro de Claude, o en el APK con tu clave de la API.",
-  no_key:"Para chatear agrega tu clave de la API de Claude en Perfil.",
-  bad_key:"La clave de la API no es válida. Revísala en Perfil.",
+  no_key:"Para chatear agrega tu clave de la API de Claude en Configuración.",
+  bad_key:"La clave de la API no es válida. Revísala en Configuración.",
   offline:"Sin conexión a internet. Conéctate para chatear con Merino.",
   overloaded:"El servicio está saturado. Intenta en un minuto.",
 };
@@ -1891,17 +1892,17 @@ function header(title){
   return `<div class="top"><div>${title ? `<h1>${esc(title)}</h1>` : `<div class="hello">Hola, ${esc(S.profile.name||"")}</div>${greetLine()}`}
     ${S.demo ? `<button class="pill warn" data-act="exitdemo" style="margin-top:6px">Datos de ejemplo · Salir</button>` : ""}</div>
     <div class="lvl"><span class="pill good">Nivel ${level()}${S.streak.cur ? ` · Racha ${S.streak.cur}` : ""}</span>
-      <button class="chatbtn" data-act="go" data-v="chat" aria-label="Pregúntale a Merino">${IC.chat}</button></div></div>`;
+      <button class="chatbtn" data-act="go" data-v="profile" aria-label="Configuración">${IC.gear}</button></div></div>`;
 }
 function nav(){
   const on = v => ui.view===v || (v==="scan" && ui.view==="review") || (v==="history" && ui.view==="detail");
   const t = (v,label,icon,extra="") => `<button class="tab ${extra}" data-act="go" data-v="${v}" ${on(v)?'aria-current="page"':""}>${extra?`<span class="ring">${icon}</span>`:icon}<span>${label}</span></button>`;
-  return `<nav class="tabs" aria-label="Secciones"><div class="inner">${t("home","Inicio",IC.home)}${t("history","Gastos",IC.list)}${t("scan","Escanear",IC.scan,"fab")}${t("pig","Cochinito",IC.pig)}${t("profile","Perfil",IC.user)}</div></nav>`;
+  return `<nav class="tabs" aria-label="Secciones"><div class="inner">${t("home","Inicio",IC.home)}${t("history","Gastos",IC.list)}${t("scan","Escanear",IC.scan,"fab")}${t("pig","Cochinito",IC.pig)}${t("chat","Merino",IC.chat)}</div></nav>`;
 }
 const monthName = () => new Date().toLocaleDateString("es-MX", { month:"long" });
 const ACC_ICON = { efectivo:"💵", debito:"💳", credito:"💳", ahorro:"🏦", digital:"📱", beca:"🎓" };
 function payPicker(d){
-  if (!S.accounts.length) return `<p class="alert info">Agrega tus cuentas en Perfil para saber de qué dinero sale cada gasto.</p>`;
+  if (!S.accounts.length) return `<p class="alert info">Agrega tus cuentas en Configuración para saber de qué dinero sale cada gasto.</p>`;
   const sel = d.accountId, hint = !sel ? (d.payment ? `El ticket dice que pagaste ${PAY_LABEL[d.payment]}. ¿Con cuál?` : "Elige de qué dinero salió esta compra.")
     : d.accountWhy ? `Lo elegí por ${d.accountWhy}. Cámbialo si no es así.` : "";
   return `<div class="paypick ${sel ? "" : "need"}"><div class="row between"><b>¿Con qué pagaste?</b>${sel ? "" : `<span class="pill warn">Falta elegir</span>`}</div>
@@ -2241,7 +2242,7 @@ function viewScan(){
     <button class="btn ghost block" data-act="manual">Registrar un gasto a mano</button>
     ${fold("pegar", "¿Sin foto? Pega el texto del ticket", `<label class="field"><span>Texto del ticket</span><textarea id="pasted" placeholder="Pega aquí el texto del ticket o de una factura"></textarea></label>
       <div class="row wrap"><button class="btn sm" data-act="readtext">Leer texto</button><button class="btn soft sm" data-act="example">Ticket de ejemplo</button><button class="btn soft sm" data-act="example2">Ejemplo con descuentos</button></div>`)}
-    <p class="small muted">${S.keepPhotos ? "La foto se guarda solo en este dispositivo para que puedas revisarla después." : "La foto no se guarda: solo se usa para leer el ticket. Puedes activar el guardado en Perfil."}</p>`;
+    <p class="small muted">${S.keepPhotos ? "La foto se guarda solo en este dispositivo para que puedas revisarla después." : "La foto no se guarda: solo se usa para leer el ticket. Puedes activar el guardado en Configuración."}</p>`;
 }
 const draftSum = d => d.items.reduce((a,i)=>a+i.total,0);
 const draftDiff = d => d.total == null ? 0 : d.total - draftSum(d);
@@ -2334,7 +2335,7 @@ function viewProfile(){
   const P = S.profile;
   const chip = (field, val, label) => `<button class="chip" data-act="set" data-f="${field}" data-val="${val}" aria-pressed="${String(P[field.split(".")[1]])===String(val)}">${label}</button>`;
   const theme = themeCard().replace(/^<div class="card"><h3>Temporadas<\/h3>/, "").replace(/<\/div>\s*$/, "");
-  return `${header("Perfil")}
+  return `${header("Configuración")}
   ${accountCard()}
   ${fold("perfil", "Tú", `<label class="field"><span>Nombre</span><input id="p-name" data-live="profile.name" value="${esc(P.name)}"></label>
     <div class="stack" style="gap:6px"><span class="label">¿Estudias?</span><div class="chips">${chip("profile.student", true, "Sí")}${chip("profile.student", false, "No")}</div></div>
@@ -2450,7 +2451,7 @@ const ACT = {
   markpaid: t => { const f = S.fixed.find(x=>x.id===t.dataset.id); if (!f) return; ((S.fixedPaid ||= {})[monthKey()] ||= {})[f.id] = "previo"; save(); render(); toast(`${f.name} marcado como pagado. No moví dinero de tus cuentas`); },
   cancelpay: () => { ui.payFixed = null; render(); },
   confirmpay: t => {
-    const f = S.fixed.find(x=>x.id===t.dataset.id); if (!f || !f.amt) { toast("Ponle monto a este gasto fijo en Perfil"); return; }
+    const f = S.fixed.find(x=>x.id===t.dataset.id); if (!f || !f.amt) { toast("Ponle monto a este gasto fijo en Configuración"); return; }
     const acc = S.accounts.find(a=>a.id===$("#pf-acc")?.value) || S.accounts[0];
     const month = monthKey(), rec = { id:uid(), merchant:f.name || "Gasto fijo", at:new Date().toISOString(), accountId:acc.id, source:"fijo", total:f.amt,
       items:[{ name:f.name || "Gasto fijo", raw:"", qty:1, total:f.amt, cat: CATS[f.cat] ? f.cat : "servicios", conf:1 }], fixedId:f.id, month };
