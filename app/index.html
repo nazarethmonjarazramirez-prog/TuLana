@@ -2044,7 +2044,7 @@ function viewOnboarding(){
   }
   const ONB_MOOD = {1:"guino",2:"feliz",3:"piensa",4:"feliz",5:"piensa",6:"celebra"};
   return `<div class="app onb">${steps}${mascotRow(ONB_MOOD[st], say("onb"+st), {size:"sm"})}<div class="stack lg">${body}</div>
-    <div class="foot"><button class="btn accent block" id="next" data-act="onb" data-d="1" ${canNext?"":"disabled"}>${nextLabel}</button>${back}</div></div>`;
+    <div class="foot"><button class="btn accent block" id="next" data-act="onb" data-d="1" ${canNext?"":"disabled"}>${nextLabel}</button>${st === 6 ? `<button class="link" data-act="skipgoal">Omitir por ahora, la creo después</button>` : ""}${back}</div></div>`;
 }
 const FIXED_SUGGESTIONS = [["Renta","hogar"],["Transporte","transporte"],["Celular","servicios"],["Internet","servicios"],["Colegiatura","educacion"],["Streaming","entretenimiento"],["Gimnasio","cuidado_personal"]];
 function incomeEditRow(i){
@@ -2422,6 +2422,12 @@ const ACT = {
   toggle: t => { ui[t.dataset.k] = !ui[t.dataset.k]; render(); },
   openmonth: () => { ui.monthOpen = true; render(); $("#month-card")?.scrollIntoView({ block:"start" }); },
   editbudgets: () => { ui.view = "profile"; ui.open.presupuestos = true; render(); document.querySelector('[data-fold="presupuestos"]')?.scrollIntoView({ block:"start" }); },
+  skipgoal: () => {
+    S.goal = { name:"", target:0 }; S.goals = [];
+    const mk = monthKey(); for (const f of S.fixed) { if (f.paidNow) ((S.fixedPaid ||= {})[mk] ||= {})[f.id] = "previo"; delete f.paidNow; }
+    S.onboarded = true; S.demo = false; unlock("perfil"); ui.view = "home"; save(); render(); window.scrollTo(0,0);
+    toast("Listo. Crea tu meta cuando quieras en Cochinito.");
+  },
   onb: t => {
     const d = +t.dataset.d;
     if (d>0 && ui.onb===6) {
