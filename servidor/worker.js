@@ -12,7 +12,7 @@
 //   LIMITE_IA_DIA      (opcional) lecturas/mensajes con IA por persona al día; por defecto 150
 // Vínculo (Settings → Bindings): base de datos D1 con el nombre DB. Las tablas se crean solas.
 
-const GOOGLE_CLIENT_ID = "__GOOGLE_CLIENT_ID__";
+const GOOGLE_CLIENT_ID = "324720434530-o4do8dplmtf2acr4b47pa0sqn0e7cq52.apps.googleusercontent.com";
 const SESION_DIAS = 365;
 const RESPALDO_MAX = 6_000_000;      // caracteres por respaldo (ya comprimido)
 const PARTE = 900_000;               // D1 guarda filas de hasta 2 MB; partimos el respaldo en trozos
