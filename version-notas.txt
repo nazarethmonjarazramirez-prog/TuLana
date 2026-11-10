@@ -1,1 +1,1 @@
-Modo oscuro automático y nuevos íconos en Configuración.
+Nueva pantalla de bienvenida, explicación de metas y de tus puntos.
