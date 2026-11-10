@@ -69,3 +69,21 @@ jobs:
           name: TuLana v1.0.${{ github.run_number }}
           body: Descarga TuLana.apk desde tu teléfono Android e instálalo.
           files: TuLana.apk
+
+      # Aviso de actualización: la app revisa este archivo para saber si hay versión nueva
+      - name: Preparar version.json
+        run: |
+          mkdir -p ver
+          CODE=$(grep -oP 'versionCode \K[0-9]+' app/build.gradle)
+          NAME=$(grep -oP 'versionName "\K[^"]+' app/build.gradle)
+          NOTAS=$(cat version-notas.txt 2>/dev/null || echo "")
+          python3 -c "import json,sys; print(json.dumps({'code':int(sys.argv[1]),'version':sys.argv[2],'notas':sys.argv[3]}, ensure_ascii=False))" "$CODE" "$NAME" "$NOTAS" > ver/version.json
+          cat ver/version.json
+
+      - name: Publicar version.json en la página
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./ver
+          publish_branch: gh-pages
+          keep_files: true

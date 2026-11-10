@@ -152,6 +152,13 @@ public class MainActivity extends ComponentActivity {
                 runOnUiThread(() -> signInWithGoogle(clientId));
             }
 
+            // Versión instalada, para saber si hay una actualización
+            @JavascriptInterface
+            public int appVersionCode() {
+                try { return (int) androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(getPackageManager().getPackageInfo(getPackageName(), 0)); }
+                catch (Exception e) { return 0; }
+            }
+
             // Compartir un logro: la app manda la imagen y Android abre el menú para compartir
             @JavascriptInterface
             public void shareImage(String b64, String text) {

@@ -102,6 +102,7 @@ public final class Reminders {
 
     /** Lo ejecuta WorkManager una vez al día a la hora elegida. */
     static void runDaily(Context c) {
+        checkUpdate(c);
         SharedPreferences p = prefs(c);
         String today = day(0);
         if (today.equals(p.getString("lastNotified", ""))) return;
@@ -163,6 +164,57 @@ public final class Reminders {
                         : new String[]{"Mañana vence " + name, "Son " + amt + ". Ya lo tengo apartado de lo que puedes gastar."};
         }
         return null;
+    }
+
+    private static final String UPDATE_URL = "https://nazarethmonjarazramirez-prog.github.io/TuLana/version.json";
+    private static final String APK_URL = "https://github.com/nazarethmonjarazramirez-prog/TuLana/releases/latest/download/TuLana.apk";
+
+    /** Una vez al día revisa si hay versión nueva y avisa una sola vez por versión. */
+    static void checkUpdate(Context c) {
+        java.net.HttpURLConnection con = null;
+        try {
+            con = (java.net.HttpURLConnection) new java.net.URL(UPDATE_URL + "?t=" + System.currentTimeMillis()).openConnection();
+            con.setConnectTimeout(8000); con.setReadTimeout(8000); con.setUseCaches(false);
+            if (con.getResponseCode() != 200) return;
+            StringBuilder sb = new StringBuilder();
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(con.getInputStream(), "UTF-8"))) {
+                String line; while ((line = r.readLine()) != null) sb.append(line);
+            }
+            JSONObject v = new JSONObject(sb.toString());
+            int code = v.optInt("code", 0);
+            int mine = (int) androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(c.getPackageManager().getPackageInfo(c.getPackageName(), 0));
+            SharedPreferences p = prefs(c);
+            if (code <= mine || code == p.getInt("updNotified", 0)) return;
+            boolean en = false;
+            try { en = "en".equals(new JSONObject(p.getString("state", "{}")).optString("lang", "es")); } catch (Exception ignored) { }
+            String ver = v.optString("version", "");
+            String title = en ? "New TuLana version " + ver + " 🐑" : "Nueva versión de TuLana " + ver + " 🐑";
+            String text = en ? "Tap to update. It installs on top and you keep your data." : "Toca para actualizar. Se instala encima y no pierdes tus datos.";
+            if (showLink(c, title, text, APK_URL)) p.edit().putInt("updNotified", code).apply();
+        } catch (Exception ignored) {
+        } finally { if (con != null) con.disconnect(); }
+    }
+
+    private static boolean showLink(Context c, String title, String text, String url) {
+        if (!allowed(c)) return false;
+        ensureChannel(c);
+        Intent open = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pi = PendingIntent.getActivity(c, 2, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
+                .setSmallIcon(R.drawable.ic_stat_merino).setColor(0xFFC4531E)
+                .setContentTitle(title).setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setAutoCancel(true).setContentIntent(pi);
+        try { NotificationManagerCompat.from(c).notify(1002, b.build()); return true; } catch (SecurityException e) { return false; }
+    }
+
+    private static void ensureChannel(Context c) {
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Recordatorios de Merino", NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setDescription("Avisos para registrar tus gastos, pagos por vencer y tu racha");
+            nm.createNotificationChannel(ch);
+        }
     }
 
     static boolean show(Context c, String title, String text) {
