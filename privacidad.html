@@ -2,7 +2,7 @@
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Aviso de privacidad · TuLana</title>
-<meta name="description" content="Qué datos usa TuLana, para qué y cómo puedes controlarlos. La versión corta: casi todo se queda en tu teléfono, no vendemos tus datos y no mostramos anuncios.">
+<meta name="description" content="Este aviso explica qué datos personales trata TuLana, con qué finalidades y cómo puedes ejercer tus derechos, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.">
 <link rel="icon" href="assets/icono.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&display=swap" rel="stylesheet">
@@ -19,7 +19,9 @@ header{border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:700 22px var(--display)}
 .brand img{width:34px;height:34px;border-radius:10px}
-nav a{color:var(--muted);font-weight:600;font-size:15px;text-decoration:none;margin-left:18px}
+nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 16px}
+nav a{color:var(--muted);font-weight:600;font-size:15px;text-decoration:none}
+@media (max-width:560px){.bar{height:auto;padding:12px 0;gap:10px;flex-direction:column;align-items:flex-start} nav{justify-content:flex-start}}
 main{padding:40px 0 64px}
 h1{font:600 clamp(32px,6vw,44px)/1.1 var(--display);margin:0 0 12px;letter-spacing:-.01em}
 h2{font:600 22px/1.2 var(--display);margin:36px 0 10px}
@@ -36,58 +38,65 @@ footer{border-top:1px solid var(--line);padding:24px 0;font-size:14px;color:var(
 </style></head>
 <body>
 <header><div class="wrap bar"><a class="brand" href="./"><img src="assets/icono.png" alt="">TuLana</a>
-<nav><a href="privacidad.html">Privacidad</a><a href="terminos.html">Términos</a></nav></div></header>
+<nav><a href="sobre.html">Sobre la app</a><a href="ayuda.html">Ayuda</a><a href="privacidad.html">Privacidad</a><a href="terminos.html">Términos</a></nav></div></header>
 <main class="wrap">
 <h1>Aviso de privacidad</h1>
-<p class="meta">Última actualización: 9 de noviembre de 2026</p>
-<p class="lead">Qué datos usa TuLana, para qué y cómo puedes controlarlos. La versión corta: casi todo se queda en tu teléfono, no vendemos tus datos y no mostramos anuncios.</p>
+<p class="meta">Última actualización: 10 de noviembre de 2026</p>
+<p class="lead">Este aviso explica qué datos personales trata TuLana, con qué finalidades y cómo puedes ejercer tus derechos, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
 
-<h2>1. Quién es responsable de tus datos</h2>
-<p>Equipo TuLana, proyecto estudiantil de la FIAD-UABC (en adelante, “TuLana”), con domicilio para oír y recibir notificaciones en Ensenada, Baja California, México, es responsable del tratamiento de tus datos personales. Para cualquier tema de privacidad escríbenos a <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a>.</p>
+<h2>1. Responsable</h2>
+<p>Equipo TuLana (en adelante, “TuLana”), con domicilio para oír y recibir notificaciones en Ensenada, Baja California, México, es responsable del tratamiento de tus datos personales. Contacto: <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a>.</p>
 
-<h2>2. Qué datos usamos y dónde se guardan</h2>
+<h2>2. Datos personales que tratamos</h2>
 <table><thead><tr><th>Datos</th><th>Dónde se guardan</th><th>Para qué</th></tr></thead><tbody>
-<tr><td>Nombre o apodo, si estudias o trabajas, ingresos, gastos fijos, cuentas y saldos, gastos, tickets, metas y logros</td><td>En tu teléfono. Si entras con Google, también una copia comprimida en nuestra base de datos.</td><td>Mostrarte en qué se va tu dinero, ayudarte a ahorrar y, con cuenta, respaldar y recuperar tus datos.</td></tr>
-<tr><td>Fotos de tus tickets</td><td>Solo en tu teléfono, si activas “Guardar la foto”. No se respaldan.</td><td>Que puedas revisar o corregir un gasto.</td></tr>
-<tr><td>Foto o texto del ticket al escanear y mensajes del chat con Merino</td><td>No se guardan en nuestro servidor: pasan por él solo para enviarlos a la inteligencia artificial y regresarte la respuesta.</td><td>Leer los productos del ticket y responder tus preguntas.</td></tr>
-<tr><td>Nombre, correo, foto de perfil e identificador de tu cuenta de Google</td><td>En nuestra base de datos, solo si eliges “Continuar con Google”.</td><td>Crear tu cuenta y ligarla a tu respaldo.</td></tr>
-<tr><td>Un identificador aleatorio de tu teléfono, tu dirección IP y cuántas veces usas la IA al día</td><td>En nuestra base de datos, por un máximo de 3 días.</td><td>Poner un límite diario de uso para que nadie sature el servicio.</td></tr>
+<tr><td>Nombre o apodo, ocupación, ingresos, gastos fijos, cuentas y saldos, gastos, tickets, metas y logros</td><td>En tu dispositivo. Si creas una cuenta, también una copia de respaldo en nuestra base de datos.</td><td>Mostrarte tus gastos, ayudarte a ahorrar y, con cuenta, respaldar y recuperar tu información.</td></tr>
+<tr><td>Fotos de tickets</td><td>En tu dispositivo, si activas “Guardar la foto”. No se respaldan.</td><td>Que puedas revisar o corregir un gasto.</td></tr>
+<tr><td>Imagen o texto de un ticket al escanearlo y mensajes del chat con Merino</td><td>Se envían al proveedor de inteligencia artificial para procesarlos; nuestro servidor no los almacena.</td><td>Leer los productos del ticket y responder tus preguntas.</td></tr>
+<tr><td>Nombre, correo electrónico, foto de perfil e identificador de tu cuenta de Google</td><td>En nuestra base de datos, si eliges “Continuar con Google”.</td><td>Crear y administrar tu cuenta.</td></tr>
+<tr><td>Identificador aleatorio del dispositivo, dirección IP y número de usos diarios de la inteligencia artificial</td><td>En nuestra base de datos, por un máximo de 3 días.</td><td>Aplicar límites de uso y proteger el servicio.</td></tr>
 </tbody></table>
-<p>Algunos de estos datos son financieros o patrimoniales (ingresos, saldos y gastos). Si aparecen en un ticket, guardamos como máximo los últimos 4 dígitos de una tarjeta. Nunca te pedimos contraseñas de tu banco ni números completos de tarjeta.</p>
+<p>Algunos de estos datos son financieros o patrimoniales (ingresos, saldos y gastos). No tratamos datos personales sensibles. No solicitamos contraseñas bancarias ni números completos de tarjeta; si aparecen en un ticket, se conservan como máximo los últimos 4 dígitos.</p>
 
-<h2>3. Tu consentimiento</h2>
-<p>Usar TuLana sin cuenta no envía tus datos financieros a nuestra base de datos. Al tocar “Continuar con Google” nos das tu consentimiento expreso para guardar el respaldo de tus datos, incluidos los financieros, conforme a este aviso. Puedes retirarlo cuando quieras eliminando tu cuenta (punto 7).</p>
-<p>Si eres menor de 18 años, usa TuLana con el permiso de tu madre, padre o tutor.</p>
+<h2>3. Finalidades</h2>
+<p><b>Finalidades necesarias</b> para darte el servicio:</p>
+<ul><li>Registrar y mostrar tus ingresos, gastos, metas y logros.</li>
+<li>Leer tus tickets y responder el chat mediante inteligencia artificial.</li>
+<li>Crear y administrar tu cuenta, y respaldar y recuperar tu información.</li>
+<li>Aplicar límites de uso, prevenir abusos y mantener la seguridad del servicio.</li>
+<li>Atender tus solicitudes, dudas y aclaraciones.</li></ul>
+<p><b>Finalidades adicionales</b>, que no son necesarias para el servicio:</p>
+<ul><li>Mostrar anuncios en la versión gratuita, a través de proveedores de publicidad que pueden usar el identificador de publicidad de tu dispositivo.</li>
+<li>Elaborar estadísticas generales de uso para mejorar la app.</li></ul>
+<p>Si no deseas que tus datos se traten para estas finalidades adicionales, escríbenos a <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a>. Para los anuncios personalizados, también puedes restablecer o desactivar el identificador de publicidad en los ajustes de tu dispositivo. Tu negativa no te impide usar TuLana.</p>
 
-<h2>4. Para qué NO usamos tus datos</h2>
-<ul><li>No vendemos ni rentamos tus datos.</li>
-<li>No los usamos para publicidad ni mostramos anuncios.</li>
-<li>Nosotros no usamos tus datos para entrenar inteligencia artificial.</li></ul>
-<p>Un aviso honesto: durante el piloto usamos el plan gratuito de Google Gemini, en el que Google puede usar lo que se le envía (la foto del ticket o tu mensaje) para mejorar sus productos. Antes del lanzamiento público cambiaremos al plan de pago, en el que eso no ocurre, y actualizaremos este aviso.</p>
+<h2>4. Consentimiento</h2>
+<p>Al usar TuLana sin cuenta, tu información financiera permanece en tu dispositivo. Al elegir “Continuar con Google” otorgas tu consentimiento expreso para el tratamiento de tus datos financieros y patrimoniales con las finalidades de este aviso. Puedes revocarlo en cualquier momento conforme a la sección 7.</p>
+<p>Si eres menor de 18 años, debes usar TuLana con la autorización de tu madre, padre o tutor.</p>
 
-<h2>5. Quién nos ayuda a dar el servicio</h2>
-<p>Para que TuLana funcione, estos proveedores procesan datos por nuestra cuenta y solo para darte el servicio:</p>
-<ul><li><b>Cloudflare</b>: servidor y base de datos donde vive tu cuenta y tu respaldo.</li>
-<li><b>Google</b>: inicio de sesión con Google y la inteligencia artificial Gemini que lee los tickets y responde el chat.</li>
-<li><b>Anthropic</b>: inteligencia artificial de respaldo, solo si la activamos y la principal no está disponible.</li>
-<li><b>GitHub</b>: aloja este sitio y las descargas de la app.</li></ul>
-<p>Sus servidores pueden estar fuera de México. No compartimos tus datos con nadie más, salvo que una autoridad competente lo pida conforme a la ley.</p>
+<h2>5. Encargados y transferencias</h2>
+<p>Para operar el servicio, los siguientes proveedores tratan datos por cuenta de TuLana, conforme a sus propias condiciones de servicio y políticas de privacidad:</p>
+<ul><li><b>Cloudflare</b>: servidor y base de datos.</li>
+<li><b>Google</b>: inicio de sesión, inteligencia artificial Gemini y, en la versión gratuita, publicidad.</li>
+<li><b>Anthropic</b>: inteligencia artificial alterna, cuando la principal no está disponible.</li>
+<li><b>GitHub</b>: alojamiento de este sitio y de las descargas de la app.</li></ul>
+<p>Sus servidores pueden ubicarse fuera de México. No transferimos tus datos personales a terceros, salvo en los casos que la ley permite sin tu consentimiento, como el requerimiento de una autoridad competente.</p>
 
-<h2>6. Cuánto tiempo los guardamos</h2>
-<p>Tu cuenta y tu respaldo se guardan mientras tu cuenta exista. Al eliminarla desde la app, se borran de inmediato de la base de datos y también los datos de la app en tu teléfono; las copias automáticas de recuperación del proveedor desaparecen en un máximo de 30 días. Si usas TuLana sin cuenta, tus datos se quedan en tu teléfono hasta que uses “Empezar de cero” o desinstales la app.</p>
+<h2>6. Conservación</h2>
+<p>Los datos de tu cuenta y tu respaldo se conservan mientras tu cuenta exista. Al eliminarla, se borran de nuestra base de datos, y las copias de recuperación del proveedor se eliminan en un máximo de 30 días. Si usas TuLana sin cuenta, tus datos permanecen en tu dispositivo hasta que los borres o desinstales la app.</p>
 
-<h2>7. Tus derechos</h2>
-<p>Puedes acceder a tus datos, corregirlos, cancelarlos u oponerte a su uso (derechos ARCO), y retirar tu consentimiento:</p>
-<ul><li><b>Desde la app</b>: corrige tus datos en Configuración (el engrane de arriba a la derecha); elimina tu cuenta y tu respaldo en Configuración → Tu cuenta → Eliminar mi cuenta.</li>
-<li><b>Por correo</b>: escribe a <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a> desde el correo de tu cuenta, con tu nombre y lo que necesitas. Te respondemos en un máximo de 20 días hábiles.</li></ul>
-<p>Más detalles en <a href="eliminar-cuenta.html">Eliminar tu cuenta</a>.</p>
+<h2>7. Derechos ARCO y revocación del consentimiento</h2>
+<p>Tienes derecho a acceder a tus datos personales, rectificarlos, cancelarlos u oponerte a su tratamiento, así como a revocar tu consentimiento. Para hacerlo, envía una solicitud a <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a> que incluya:</p>
+<ul><li>Tu nombre y el correo de tu cuenta, para comunicarte la respuesta.</li>
+<li>La descripción clara del derecho que deseas ejercer y de los datos involucrados.</li>
+<li>Un documento que acredite tu identidad o, en su caso, la de tu representante.</li></ul>
+<p>Responderemos en un plazo máximo de 20 días hábiles y, si procede, haremos efectiva tu solicitud dentro de los 15 días hábiles siguientes. Las opciones disponibles dentro de la app se explican en <a href="ayuda.html">Ayuda</a>.</p>
 
-<h2>8. Seguridad</h2>
-<p>Toda la comunicación viaja cifrada (HTTPS). Tu sesión se guarda en nuestra base de datos de forma que no se puede usar aunque alguien la viera, y tu respaldo solo se entrega a tu cuenta. Ningún sistema es infalible: si detectamos un problema que afecte tus datos, te avisaremos.</p>
+<h2>8. Medidas de seguridad</h2>
+<p>TuLana aplica medidas de seguridad administrativas, técnicas y físicas para proteger tus datos personales, entre ellas el cifrado de las comunicaciones (HTTPS) y el acceso restringido a la base de datos.</p>
 
-<h2>9. Cambios a este aviso</h2>
-<p>Si cambiamos este aviso (por ejemplo, si algún día agregamos publicidad o nuevas funciones), publicaremos la nueva versión en esta página y te avisaremos en la app antes de que aplique.</p>
+<h2>9. Actualizaciones de este aviso</h2>
+<p>Cualquier modificación a este aviso se publicará en esta página, con la fecha de su última actualización.</p>
 
 </main>
-<footer><div class="wrap">TuLana · Equipo TuLana, proyecto estudiantil de la FIAD-UABC · <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a></div></footer>
+<footer><div class="wrap">TuLana · <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a></div></footer>
 </body></html>

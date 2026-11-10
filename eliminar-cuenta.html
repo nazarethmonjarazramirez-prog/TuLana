@@ -19,7 +19,9 @@ header{border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font:700 22px var(--display)}
 .brand img{width:34px;height:34px;border-radius:10px}
-nav a{color:var(--muted);font-weight:600;font-size:15px;text-decoration:none;margin-left:18px}
+nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 16px}
+nav a{color:var(--muted);font-weight:600;font-size:15px;text-decoration:none}
+@media (max-width:560px){.bar{height:auto;padding:12px 0;gap:10px;flex-direction:column;align-items:flex-start} nav{justify-content:flex-start}}
 main{padding:40px 0 64px}
 h1{font:600 clamp(32px,6vw,44px)/1.1 var(--display);margin:0 0 12px;letter-spacing:-.01em}
 h2{font:600 22px/1.2 var(--display);margin:36px 0 10px}
@@ -36,10 +38,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;font-size:14px;color:var(
 </style></head>
 <body>
 <header><div class="wrap bar"><a class="brand" href="./"><img src="assets/icono.png" alt="">TuLana</a>
-<nav><a href="privacidad.html">Privacidad</a><a href="terminos.html">Términos</a></nav></div></header>
+<nav><a href="sobre.html">Sobre la app</a><a href="ayuda.html">Ayuda</a><a href="privacidad.html">Privacidad</a><a href="terminos.html">Términos</a></nav></div></header>
 <main class="wrap">
 <h1>Eliminar tu cuenta de TuLana</h1>
-<p class="meta">Última actualización: 9 de noviembre de 2026</p>
+<p class="meta">Última actualización: 10 de noviembre de 2026</p>
 <p class="lead">Puedes eliminar tu cuenta y tu respaldo en cualquier momento. Así se hace.</p>
 
 <div class="box"><h2 style="margin-top:0">Desde la app (inmediato)</h2>
@@ -61,5 +63,5 @@ footer{border-top:1px solid var(--line);padding:24px 0;font-size:14px;color:var(
 <p>Borramos tu cuenta y tu respaldo en la nube. Lo que haya quedado en algún teléfono se borra con <b>Configuración → Datos → Empezar de cero</b> o al desinstalar la app.</p>
 
 </main>
-<footer><div class="wrap">TuLana · Equipo TuLana, proyecto estudiantil de la FIAD-UABC · <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a></div></footer>
+<footer><div class="wrap">TuLana · <a href="mailto:soporte.tulana@gmail.com">soporte.tulana@gmail.com</a></div></footer>
 </body></html>
