@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Modo oscuro: sigue la configuración del teléfono. La WebView usa este tema para saber si la app va en oscuro. -->
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B1A18</item>
+        <item name="android:statusBarColor">#0B1A18</item>
+        <item name="android:navigationBarColor">#0B1A18</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
