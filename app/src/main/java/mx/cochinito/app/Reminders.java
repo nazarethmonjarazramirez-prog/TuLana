@@ -13,7 +13,9 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
@@ -57,6 +59,22 @@ public final class Reminders {
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DAY_OF_YEAR, offset);
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.getTime());
+    }
+
+    /** Revisa si hay versión nueva cada 12 horas, aunque los recordatorios estén apagados. */
+    static void scheduleUpdates(Context c) {
+        Constraints net = new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build();
+        PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(UpdateWorker.class, 12, TimeUnit.HOURS)
+                .setConstraints(net).setInitialDelay(15, TimeUnit.MINUTES).build();
+        WorkManager.getInstance(c).enqueueUniquePeriodicWork("tulana-actualizacion", ExistingPeriodicWorkPolicy.KEEP, req);
+    }
+
+    /** La primera vez que se abre la app pide permiso de notificaciones (Android 13+). */
+    static boolean firstNotifAsk(Context c) {
+        SharedPreferences p = prefs(c);
+        if (p.getBoolean("askedNotif", false)) return false;
+        p.edit().putBoolean("askedNotif", true).apply();
+        return true;
     }
 
     static void markOpened(Context c) { prefs(c).edit().putString("lastOpen", day(0)).apply(); }

@@ -112,6 +112,11 @@ public class MainActivity extends ComponentActivity {
         notifPerm = registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted ->
                 web.evaluateJavascript("window.__notifPerm && window.__notifPerm(" + granted + ")", null));
 
+        // Avisos de versión nueva, aunque los recordatorios estén apagados
+        Reminders.scheduleUpdates(this);
+        if (Reminders.firstNotifAsk(this)) askNotifPermission();
+        new Thread(() -> Reminders.checkUpdate(getApplicationContext())).start();
+
         // Puente para que la app pinte la barra de estado con el color de la temporada
         web.addJavascriptInterface(new Object() {
             @JavascriptInterface
