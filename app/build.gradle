@@ -17,8 +17,9 @@ android {
     }
 
     // Firma fija de TuLana: todas las versiones llevan la misma, así se actualizan encima sin perder datos.
-    // La contraseña vive en el secreto TULANA_KS_PASS de GitHub (nunca en el código).
+    // La llave (TULANA_KS_B64) y su contraseña (TULANA_KS_PASS) viven en secretos de GitHub, nunca en el código.
     def ksPass = System.getenv('TULANA_KS_PASS')
+    def ksOk = ksPass && file('tulana.keystore').exists()
     signingConfigs {
         tulana {
             storeFile file('tulana.keystore')
@@ -31,7 +32,7 @@ android {
 
     buildTypes {
         debug {
-            if (ksPass) signingConfig signingConfigs.tulana
+            if (ksOk) signingConfig signingConfigs.tulana
         }
         release { minifyEnabled false }
     }

@@ -41,11 +41,18 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           PY
 
+      - name: Preparar la llave de firma
+        env:
+          TULANA_KS_B64: ${{ secrets.TULANA_KS_B64 }}
+        run: |
+          if [ -n "$TULANA_KS_B64" ]; then printf '%s' "$TULANA_KS_B64" | base64 -d > app/tulana.keystore; echo "Llave tomada del secreto TULANA_KS_B64"; fi
+          if [ ! -f app/tulana.keystore ]; then echo "::warning::Falta el secreto TULANA_KS_B64: se firmará con una llave temporal"; fi
+
       - name: Compilar APK
         env:
           TULANA_KS_PASS: ${{ secrets.TULANA_KS_PASS }}
         run: |
-          if [ -n "$TULANA_KS_PASS" ]; then echo "Firmando con la llave de TuLana"; else echo "::warning::Falta el secreto TULANA_KS_PASS: se firmará con una llave temporal"; fi
+          if [ -n "$TULANA_KS_PASS" ] && [ -f app/tulana.keystore ]; then echo "Firmando con la llave de TuLana"; else echo "::warning::Falta la llave o la contraseña: se firmará con una llave temporal"; fi
           gradle assembleDebug --no-daemon --stacktrace
 
       - name: Renombrar
