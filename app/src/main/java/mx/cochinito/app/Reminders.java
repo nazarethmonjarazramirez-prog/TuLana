@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 /** Recordatorios de Merino: como máximo una notificación al día. */
 public final class Reminders {
-    private static final String PREFS = "tulana", CHANNEL = "recordatorios", WORK = "tulana-recordatorio";
+    private static final String PREFS = "tulana", CHANNEL = "merino", WORK = "tulana-recordatorio";
     private static final int NOTIF_ID = 1001;
 
     private static final String[][] GENERAL = {
@@ -219,19 +219,35 @@ public final class Reminders {
         Intent open = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pi = PendingIntent.getActivity(c, 2, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
-                .setSmallIcon(R.drawable.ic_stat_merino).setColor(0xFFC4531E)
+                .setSmallIcon(R.drawable.ic_stat_merino).setColor(0xFFC4531E).setLargeIcon(largeIcon(c))
                 .setContentTitle(title).setContentText(text)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
                 .setAutoCancel(true).setContentIntent(pi);
         try { NotificationManagerCompat.from(c).notify(1002, b.build()); return true; } catch (SecurityException e) { return false; }
     }
 
+    /** Canal con el sonido de TuLana (el sonido de un canal no se puede cambiar después, por eso es uno nuevo). */
+    private static void createChannel(Context c, NotificationManager nm) {
+        NotificationChannel ch = new NotificationChannel(CHANNEL, "Avisos de Merino", NotificationManager.IMPORTANCE_DEFAULT);
+        ch.setDescription("Recordatorios de gastos, pagos por vencer, tu racha y nuevas versiones");
+        android.net.Uri sound = android.net.Uri.parse("android.resource://" + c.getPackageName() + "/" + R.raw.merino);
+        android.media.AudioAttributes aa = new android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        ch.setSound(sound, aa);
+        ch.enableLights(true); ch.setLightColor(0xFFC4531E);
+        nm.createNotificationChannel(ch);
+        try { nm.deleteNotificationChannel("recordatorios"); } catch (Exception ignored) { }
+    }
+
+    private static android.graphics.Bitmap largeIcon(Context c) {
+        try { return android.graphics.BitmapFactory.decodeResource(c.getResources(), R.drawable.ic_notif_large); } catch (Exception e) { return null; }
+    }
+
     private static void ensureChannel(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Recordatorios de Merino", NotificationManager.IMPORTANCE_DEFAULT);
-            ch.setDescription("Avisos para registrar tus gastos, pagos por vencer y tu racha");
-            nm.createNotificationChannel(ch);
+            createChannel(c, nm);
         }
     }
 
@@ -239,15 +255,14 @@ public final class Reminders {
         if (!allowed(c)) return false;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Recordatorios de Merino", NotificationManager.IMPORTANCE_DEFAULT);
-            ch.setDescription("Avisos para registrar tus gastos, pagos por vencer y tu racha");
-            nm.createNotificationChannel(ch);
+            createChannel(c, nm);
         }
         Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(c, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_merino)
                 .setColor(0xFFC4531E)
+                .setLargeIcon(largeIcon(c))
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
