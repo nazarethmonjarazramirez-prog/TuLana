@@ -2,7 +2,9 @@ package mx.cochinito.app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.speech.RecognizerIntent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -72,6 +74,7 @@ public class MainActivity extends ComponentActivity {
     private ActivityResultLauncher<Intent> picker;
     private TextRecognizer recognizer;
     private ActivityResultLauncher<String> notifPerm;
+    private ActivityResultLauncher<Intent> voiceLauncher;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -175,7 +178,22 @@ public class MainActivity extends ComponentActivity {
             public void ocr(String b64, String id) {
                 runOnUiThread(() -> readTicket(b64, id));
             }
+
+            // Dictado por voz: abre el reconocedor de voz del teléfono y regresa el texto a la app
+            @JavascriptInterface
+            public void voice(String lang) {
+                runOnUiThread(() -> startVoice(lang));
+            }
         }, "AndroidBridge");
+
+        voiceLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), r -> {
+            String text = null;
+            if (r.getResultCode() == RESULT_OK && r.getData() != null) {
+                java.util.ArrayList<String> m = r.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (m != null && !m.isEmpty()) text = m.get(0);
+            }
+            voiceDone(text, text == null ? "cancel" : null);
+        });
 
         // Resultado de la cámara o la galería
         picker = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -364,6 +382,20 @@ public class MainActivity extends ComponentActivity {
         Collections.sort(row, (a, b) -> Integer.compare(a.getBoundingBox().left, b.getBoundingBox().left));
         for (int i = 0; i < row.size(); i++) { if (i > 0) out.append("  "); out.append(row.get(i).getText()); }
         out.append('\n');
+    }
+
+    private void startVoice(String lang) {
+        boolean en = lang != null && lang.startsWith("en");
+        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, en ? "en-US" : "es-MX");
+        i.putExtra(RecognizerIntent.EXTRA_PROMPT, en ? "Speak now" : "Habla ahora");
+        try { voiceLauncher.launch(i); } catch (ActivityNotFoundException e) { voiceDone(null, "unavailable"); }
+    }
+
+    private void voiceDone(String text, String err) {
+        String js = "window.__voiceDone && window.__voiceDone(" + (text == null ? "null" : JSONObject.quote(text)) + "," + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
     }
 
     private void ocrDone(String id, String text, String err) {
