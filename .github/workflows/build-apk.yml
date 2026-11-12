@@ -63,6 +63,12 @@ jobs:
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --print-certs TuLana.apk | grep -E "DN|SHA-256" || true
 
+      # Seguro: si el APK no lleva la llave de TuLana, no se publica (no se podría instalar encima)
+      - name: Comprobar que es la llave de TuLana
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          if "$APKSIGNER" verify --print-certs TuLana.apk | grep -qi "SHA-256 digest: cdc95373"; then echo "Firma correcta"; else echo "::error::El APK no está firmado con la llave de TuLana. Revisa los secretos TULANA_KS_B64 y TULANA_KS_PASS."; exit 1; fi
+
       - name: Guardar APK como artefacto
         uses: actions/upload-artifact@v4
         with:
