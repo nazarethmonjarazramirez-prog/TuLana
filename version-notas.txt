@@ -1,1 +1,1 @@
-Nuevo: toma foto a un producto para registrarlo, el dictado por voz entiende mejor las categorías y las notificaciones tienen el sonido y el ícono de Merino.
+Nuevo diseño: arte de temporada y de cada fecha festiva, cochinito de cristal, Merino que se esponja al ahorrar y modo oscuro automático. Además corregimos un error que podía eliminar tu cuenta al quitar una tarjeta.
