@@ -883,6 +883,41 @@ nav.tabs2 .inner{max-width:460px;margin:0 auto;display:grid;grid-template-column
 .cam-tip{display:flex;gap:8px;align-items:flex-start;margin:0}.cam-tip svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--accent)}
 .ver2{opacity:.7;font-size:12px}
 @media (max-width:400px){.chip2 .cl{display:none}}
+/* Configuración: filas sin texto encimado */
+.rb-l{min-width:0}.rb-l small{display:block;font-size:12.5px;font-weight:500;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.rb-v{max-width:48%;overflow:hidden;text-overflow:ellipsis}
+/* Editores como tarjetas */
+.itms2{display:flex;flex-direction:column;gap:8px}
+.itm2{border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--surface) 94%,transparent);overflow:hidden;transition:border-color .2s,box-shadow .2s}
+.itm2.open{border-color:color-mix(in srgb,var(--sec) 45%,var(--line));box-shadow:0 6px 16px rgba(60,40,20,.10)}
+.itm-h{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:64px}
+.itm-h:active{background:color-mix(in srgb,var(--sec) 8%,transparent)}
+.itm-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.itm-t b{font-weight:800;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itm-t small{color:var(--muted);font-size:13px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.itm-a{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15.5px}.itm-a.in{color:var(--inc)}
+.itm-chev{transition:transform .2s}.itm2.open .itm-chev{transform:rotate(90deg)}
+.itm-b{display:flex;flex-direction:column;gap:12px;padding:12px;border-top:1px dashed var(--line)}
+.itm-b .field>span{font:700 13.5px var(--body)}
+.itm-b .catsel{display:flex;width:100%;min-height:46px;border-radius:14px;box-sizing:border-box}.itm-b .catsel select{width:100%;font-size:14.5px}
+.itm-b .chip{border:0;background:var(--seg-bg,var(--sunk));min-height:40px;font-weight:700}.itm-b .chip[aria-pressed="true"]{background:var(--sec);color:#fff}
+.itm-f{padding-top:2px}.del-l{color:var(--bad)!important;font-weight:700}
+.confirm2{background:color-mix(in srgb,var(--bad) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--bad) 30%,transparent);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.tag2.late{background:color-mix(in srgb,var(--bad) 16%,var(--surface));color:var(--bad)}
+.add-row2{align-self:flex-start;background:var(--seg-bg,var(--sunk))!important;font-weight:700!important}
+/* Selector de temporada */
+.th-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.th2{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:16px;border:1.5px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,transparent);color:var(--ink);font:inherit;cursor:pointer;text-align:center;min-height:44px;transition:transform .12s,border-color .2s}
+.th2:active{transform:scale(.97)}
+.th2 b{font:700 12.5px/1.2 var(--body)}.th2 small{font-size:11px;color:var(--muted)}
+.th2[aria-pressed="true"]{border-color:var(--sec);box-shadow:0 0 0 2px color-mix(in srgb,var(--sec) 35%,transparent)}
+.th-sw{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.15),0 4px 10px rgba(0,0,0,.12);flex:none}
+.th-sw .gl{width:22px;height:22px}
+.th2.auto{flex-direction:row;justify-content:flex-start;text-align:left;padding:12px;gap:12px}
+.th-at{display:flex;flex-direction:column;gap:2px;min-width:0}.th-at b{font-size:15px}.th-at small{font-size:12.5px}
+.th-grid.s4{grid-template-columns:repeat(4,minmax(0,1fr))}.th-grid.s4 .th2{padding:10px 2px}
+.catsel select,:root[data-art] .catsel select{background:transparent!important;border:0!important;box-shadow:none!important;min-height:0}
+@media (max-width:340px){.th-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Celulares angostos (360 px y menos): la hoja inferior y la barra de la cámara caben completas */
 .sheet2,.cam2,.cam-bar,.card,.app{box-sizing:border-box}
 .sheet2{max-width:100vw}
@@ -938,7 +973,8 @@ nav.tabs2 .inner{max-width:460px;margin:0 auto;display:grid;grid-template-column
   :root[data-art] .blob{color:#17120E;box-shadow:0 8px 18px rgba(0,0,0,.35)}
   :root[data-art] .ico2,:root[data-art] .rb-ico2,:root[data-art] .sug2 .si{box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
   :root[data-art] .scrim2{background:rgba(0,0,0,.6)}
-  :root[data-art] .btn.soft,:root[data-art] .chip{background:var(--seg-bg);color:var(--ink);border-color:var(--line)}
+  :root[data-art] .btn.soft,:root[data-art] .chip:not([aria-pressed="true"]){background:var(--seg-bg);color:var(--ink);border-color:var(--line)}
+  :root[data-art] .chip[aria-pressed="true"]{background:var(--sec);color:#fff;border-color:var(--sec)}
   :root[data-art] input,:root[data-art] select,:root[data-art] textarea{background:color-mix(in srgb,var(--sunk),#fff 4%);color:var(--ink);border-color:var(--line)}
   :root[data-art] .onb2 input:not([type=range]):not([type=checkbox]),:root[data-art] .onb2 select{background:color-mix(in srgb,var(--sunk),#fff 4%)}
   :root[data-art] .catsel select option{color:#fff;background:#222}
@@ -3013,6 +3049,12 @@ Object.assign(I18N_EN, {
   "Logros y sellos": "Achievements and stamps", "Ver el clóset de Merino": "See Merino's closet",
   "ene": "Jan", "feb": "Feb", "abr": "Apr", "may": "May", "jun": "Jun", "jul": "Jul", "ago": "Aug", "sep": "Sep", "oct": "Oct", "nov": "Nov", "dic": "Dec"
 });
+Object.assign(I18N_EN, { "¿Cada cuánto te llega?": "How often do you get it?", "Monto por pago": "Amount per payment", "Saldo actual": "Current balance",
+  "Lo que debes (en negativo)": "What you owe (negative)", "Monto al mes": "Monthly amount", "Pagar este mes": "Pay this month", "Ya estaba pagado": "It was already paid",
+  "Sí, eliminar": "Yes, delete", "Automático": "Automatic", "Cambia solo con la fecha · hoy:": "Changes with the date · today:", "Estaciones": "Seasons", "Fechas festivas": "Holidays",
+  "Elegir una temporada es una vista previa. Toca Automático para que cambie sola con el calendario.": "Choosing a season is a preview. Tap Automatic so it changes with the calendar.",
+  "Ingreso sin nombre": "Unnamed income", "Pagado este mes": "Paid this month", "Ya está pagado este mes.": "Already paid this month.", "Ya no contará en tu ingreso del mes.": "It won't count in your monthly income.",
+  "Dejará de apartarse cada mes.": "It will stop being set aside each month.", "Antes pon su saldo en $0 para no perder ese dinero.": "First set its balance to $0 so you don't lose that money." });
 let LANG = (() => { try { return localStorage.getItem("tulana-lang") || "es"; } catch { return "es"; } })();
 const I18N = (() => {
   const exact = new Map(), subs = new Map(), words = new Map();
@@ -5154,8 +5196,6 @@ function viewScan(){
     ${mascotRow("feliz", say("scan_idle"), {size:"sm"})}
     ${hasVoice() ? `<p class="small muted cam-tip">${MIC}<span>Toca <b>Dictar</b> y di algo como «2 burritos de 35 y un refresco de 20 en el Oxxo».</span></p>` : ""}
     ${aiNote}
-    ${fold("pegar", "¿Sin foto? Pega el texto del ticket", `<label class="field"><span>Texto del ticket</span><textarea id="pasted" placeholder="Pega aquí el texto del ticket o de una factura"></textarea></label>
-      <div class="row wrap"><button class="btn sm" data-act="readtext">Leer texto</button><button class="btn soft sm" data-act="example">Ticket de ejemplo</button><button class="btn soft sm" data-act="example2">Ejemplo con descuentos</button></div>`)}
     <p class="small muted">${S.keepPhotos ? "La foto se guarda solo en este dispositivo para que puedas revisarla después." : "La foto no se guarda: solo se usa para leer el ticket. Puedes activar el guardado en Configuración."}</p>`;
 }
 function payPicker(d){
@@ -5438,7 +5478,7 @@ function viewProfile(){
   const nb = Object.values(S.budgets || {}).filter(v => v > 0).length, t = themeNow();
   const v = s => `<span class="rb-v">${s}</span>`;
   return `${header("Configuración")}
-    ${cuentasOn() ? `<p class="sec2">Cuenta</p><div class="card list2">${cfgRow("cuenta", "Tu cuenta", `<span class="rb-v">${cuenta()?.email ? esc(cuenta().email) : "Sin cuenta"}</span>`)}</div>` : ""}
+    ${cuentasOn() ? `<p class="sec2">Cuenta</p><div class="card list2">${cfgRow("cuenta", `Tu cuenta<small>${cuenta()?.email ? esc(cuenta().email) : "Sin cuenta"}</small>`, "")}</div>` : ""}
     <button class="card profile2" data-act="cfg" data-k="perfil">${S.mascot !== false ? `<span class="pm">${mascotImg("saludo")}</span>` : ""}
       <span style="flex:1;min-width:0"><b>${esc(P.name || "Tu perfil")}</b><span class="small muted">Nivel ${level()} · ${levelName(level())}</span></span><span class="chev3" aria-hidden="true">›</span></button>
     <p class="sec2">Dinero</p>
@@ -5455,7 +5495,6 @@ function viewProfile(){
       ${cfgRow("fotos", "Fotos de tickets", v(S.keepPhotos ? "Se guardan" : "No se guardan"))}
       ${cfgRow("idioma", "Idioma", v(LANG === "en" ? "English" : "Español"))}
       ${window.AndroidBridge?.setReminders ? cfgRow("recordatorios", "Recordatorios de Merino", v(remCfg().on ? `${remCfg().hour}:00` : "Apagados")) : ""}
-      ${cfgRow("ia", "Inteligencia artificial", v(getKey() ? "Con tu clave" : hasServer() ? "Activa" : "Sin IA"))}
       ${cfgRow("datos", "Datos", v(S.demo ? "Ejemplo" : ""))}</div>
     <p class="disc2">Tus datos se guardan en tu teléfono${cuenta() ? " y se respaldan en tu cuenta" : ""}.</p>
     <p class="disc2 ver2">TuLana ${APP_VER} · ${esc(wvInfo())}</p>`;
@@ -5470,15 +5509,14 @@ function cfgSheet(){
       <div class="stack" style="gap:6px"><span class="label">¿Estudias?</span><div class="chips">${chip("profile.student", true, "Sí")}${chip("profile.student", false, "No")}</div></div>
       <div class="stack" style="gap:6px"><span class="label">¿Trabajas?</span><div class="chips">${WORK_OPTIONS.map(w=>chip("profile.work", w, w)).join("")}</div></div>${hoursBlock()}`],
     ingresos: ["Ingresos", `<p class="small muted">Cada ingreso con cada cuánto te llega. Si te pagan por quincena, pon el monto de una quincena.</p>
-      <div class="stack">${P.incomes.map(incomeEditRow).join("") || `<p class="small muted">Sin ingresos registrados.</p>`}
-      <button class="btn soft sm" data-act="addincome" data-n="" data-f="quincenal" style="align-self:flex-start">+ Agregar ingreso</button></div>
+      <div class="itms2">${P.incomes.map(incomeCard).join("") || `<p class="small muted">Sin ingresos registrados.</p>`}</div>
+      <button class="btn soft sm add-row2" data-act="addincome" data-n="" data-f="quincenal">+ Agregar ingreso</button>
       <div class="row between tot2"><span>Total al mes</span><b id="inc-sum">${fmt0(monthlyIn())}/mes</b></div>`],
     cuentas: ["Tarjetas y cuentas", `<p class="small muted">Si un saldo no coincide con tu banco, corrígelo aquí. En crédito escribe lo que debes en negativo.</p>
-      <div class="stack">${S.accounts.map(accountEditRow).join("")}<button class="btn soft sm" data-act="addacc" style="align-self:flex-start">+ Otra tarjeta o cuenta</button></div>
+      <div class="itms2">${S.accounts.map(accCard2).join("")}</div><button class="btn soft sm add-row2" data-act="addacc">+ Otra tarjeta o cuenta</button>
       <div class="row between tot2"><span>Disponible</span><b id="cap">${fmt(cashBalance())}</b></div>`],
     fijos: ["Gastos fijos", `<p class="small muted">Pagos que se repiten cada mes. Con el día de pago, Merino te avisa antes de que venzan.</p>
-      <div class="stack">${S.fixed.map(fixedEditRow).join("") || `<p class="small muted">Sin gastos fijos registrados.</p>`}<button class="btn soft sm" data-act="addfixed" data-n="" style="align-self:flex-start">+ Agregar gasto fijo</button></div>
-      ${S.fixed.length ? `<b>Este mes</b>${fixedList()}` : ""}`],
+      <div class="itms2">${S.fixed.map(fixedCard).join("") || `<p class="small muted">Sin gastos fijos registrados.</p>`}</div><button class="btn soft sm add-row2" data-act="addfixed" data-n="">+ Agregar gasto fijo</button>`],
     ahorro: ["Ahorro mensual", `<p class="small muted">Tu meta de ahorro de cada mes. Es lo que hace crecer la lana de Merino.</p>
       <label class="field"><span>Ahorras el <b id="pctv">${P.savingsPct} %</b> de tu dinero libre</span><input id="p-pct" type="range" min="5" max="40" data-live="profile.savingsPct" value="${P.savingsPct}"></label>
       <div class="ahorro-prev2">${S.mascot !== false ? `<div class="pm" id="ah-m">${mascotImg("feliz")}</div>` : ""}<p id="ah-t" class="small">${ahorroTxt()}</p></div>
@@ -5487,7 +5525,7 @@ function cfgSheet(){
     presupuestos: ["Presupuestos por categoría", `<p class="small muted">Pon un límite al mes para las categorías que quieras vigilar. Déjalo vacío para no poner límite.</p>
       <div class="stack" style="gap:8px">${Object.entries(CATS).filter(([k])=>k!=="otros").map(([k,v])=>`<label class="budget-row"><span class="row" style="gap:8px">${catIco(k).replace('class="ico2"', 'class="ico2 sm"')}${v.n}</span><input id="bg-${k}" inputmode="decimal" class="money" data-budget="${k}" value="${toInput(S.budgets?.[k]||0)}" placeholder="Sin límite"></label>`).join("")}</div>`],
     merino: ["Merino", mascotBody()],
-    temporadas: ["Temporadas", themeCard().replace(/^<div class="card"><h3>Temporadas<\/h3>/, "").replace(/<\/div>\s*$/, "")],
+    temporadas: ["Temporadas", themePicker()],
     fotos: ["Fotos de tickets", `<label class="toggle"><input type="checkbox" id="p-photos" ${S.keepPhotos ? "checked" : ""}> Guardar la foto de cada ticket escaneado</label>
       <p class="small muted">Las fotos se guardan solo en este dispositivo y no se suben a ningún servidor; para leerlas se envían una vez a la IA. Si borras un gasto, se borra su foto.</p>`],
     datos: ["Datos", `${dataCardBody()}${dataNote()}`],
@@ -5503,7 +5541,77 @@ function cfgSheet(){
       <button class="btn accent block" data-act="closecfg" style="margin-top:6px">Listo</button></div>`;
 }
 // Cuerpos de las hojas que solo existen en la app Android (antes estaban en la Configuración de Android)
-const APP_VER = "1.5.1";
+
+// ───── Editores de Configuración como tarjetas (ingresos, tarjetas y cuentas, gastos fijos) ─────
+// Se ven como el resto de la app y, para no borrar por accidente, eliminar pide confirmación.
+const ACC_ICON2 = { debito:'<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6 15h4"/>',
+  credito:'<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M15 15h3"/><circle cx="7" cy="15" r="1.2"/>',
+  efectivo:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9v6M18 9v6"/>',
+  ahorro:'<path d="M19 9.5c1.2 0 2 .9 2 2s-.8 2-2 2M5 11c0-3.3 3.1-6 7-6s7 2.7 7 6-3.1 6-7 6c-.7 0-1.3-.1-2-.2L8 19H6.5l.3-2.6C5.7 15.3 5 13.3 5 11zM10 5V3.5"/>',
+  digital:'<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/>',
+  beca:'<path d="m1 9 11-5 11 5-11 5z"/><path d="M5.5 11v5c3 2.5 10 2.5 13 0v-5"/>' };
+const ACC_COLOR2 = { debito:"#4A6FA5", credito:"#B5482A", efectivo:"#2F7A5E", ahorro:"#C9862E", digital:"#7A52B5", beca:"#2E8A8A" };
+const svgI = (d, c) => `<span class="ico2" style="background:${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`;
+const itmHead = (ico, title, sub, amt, cls = "") => `${ico}<span class="itm-t"><b>${esc(title)}</b><small>${sub}</small></span><span class="itm-a ${cls}">${amt}</span>`;
+function itemCard(key, head, body, delAct, delId, delTxt){
+  const open = ui.itemOpen === key, asking = ui.itemDel === key;
+  return `<div class="itm2 ${open ? "open" : ""}">
+    <button class="itm-h" data-act="itemopen" data-k="${key}" aria-expanded="${open}">${head}<span class="chev3 itm-chev" aria-hidden="true">›</span></button>
+    ${open ? `<div class="itm-b">${body}
+      ${asking ? `<div class="confirm2" role="alert"><b>${delTxt}</b><div class="row wrap"><button class="btn sm danger" data-act="${delAct}" data-id="${delId}">Sí, eliminar</button><button class="btn ghost sm" data-act="itemdelno">Cancelar</button></div></div>`
+        : `<div class="row between itm-f"><button class="link small del-l" data-act="itemdel" data-k="${key}">Eliminar</button><button class="btn soft sm" data-act="itemopen" data-k="${key}">Listo</button></div>`}</div>` : ""}</div>`;
+}
+function incomeCard(i){
+  const f = FREQS[i.freq] || FREQS.mensual;
+  const head = itmHead(catIco("ingreso", "var(--inc)"), i.name || "Ingreso sin nombre", `${i.freq === "variable" ? "Varía" : f.n} · ${fmt0(Math.round((i.amt || 0) * f.f))}/mes`, fmt0(i.amt || 0), "in");
+  const body = `<div class="grid2"><label class="field"><span>Concepto</span><input id="in-n-${i.id}" data-income="${i.id}" data-k="name" value="${esc(i.name)}" placeholder="Ej. Beca"></label>
+      <label class="field"><span>Monto por pago</span><input id="in-a-${i.id}" inputmode="decimal" data-income="${i.id}" data-k="amt" value="${toInput(i.amt)}" placeholder="$0"></label></div>
+    <div class="stack" style="gap:6px"><span class="q-lab">¿Cada cuánto te llega?</span><div class="chips">${Object.entries(FREQS).map(([k, v]) => `<button class="chip" data-act="setfreq" data-id="${i.id}" data-val="${k}" aria-pressed="${i.freq === k}">${k === "variable" ? "Varía" : v.n}</button>`).join("")}</div></div>`;
+  return itemCard("inc:" + i.id, head, body, "delincomesrc", i.id, `¿Eliminar “${esc(i.name || "este ingreso")}”? Ya no contará en tu ingreso del mes.`);
+}
+function accCard2(a){
+  const cred = a.type === "credito";
+  const head = itmHead(svgI(ACC_ICON2[a.type] || ACC_ICON2.debito, ACC_COLOR2[a.type] || "#4A6FA5"), a.name || ACC_TYPES[a.type] || "Cuenta", ACC_TYPES[a.type] || "Cuenta",
+    cred ? "Debes " + fmt0(Math.max(0, -(a.balance || 0))) : fmt(a.balance || 0), cred ? "out" : "");
+  const body = `<div class="grid2"><label class="field"><span>Nombre</span><input id="ac-n-${a.id}" data-acc="${a.id}" data-k="name" value="${esc(a.name)}" placeholder="Ej. Nu, BBVA"></label>
+      <label class="field"><span>${cred ? "Lo que debes (en negativo)" : "Saldo actual"}</span><input id="ac-b-${a.id}" inputmode="decimal" data-acc="${a.id}" data-k="balance" value="${toInput(a.balance)}" placeholder="${cred ? "-500" : "$0"}"></label></div>
+    <div class="stack" style="gap:6px"><span class="q-lab">Tipo</span><div class="chips">${Object.entries(ACC_TYPES).map(([k, v]) => `<button class="chip" data-act="acctype" data-id="${a.id}" data-val="${k}" aria-pressed="${a.type === k}">${v}</button>`).join("")}</div></div>`;
+  return itemCard("acc:" + a.id, head, body, "delacc", a.id, `¿Eliminar “${esc(a.name || ACC_TYPES[a.type] || "esta cuenta")}”?${a.balance ? " Antes pon su saldo en $0 para no perder ese dinero." : ""}`);
+}
+function fixedCard(f){
+  const paid = paidFixedMap()[f.id], di = dueInfo(f), c = CATS[f.cat] ? f.cat : "servicios", late = !paid && di.days != null && di.days < 0;
+  const status = paid ? `<i class="tag2 soft">Pagado este mes</i>` : `<i class="tag2 ${late ? "late" : ""}">${esc(di.txt)}</i>`;
+  const head = itmHead(catIco(c), f.name || "Gasto fijo", status, fmt0(f.amt || 0), "out");
+  const pay = paid ? `<p class="small muted" style="margin:0">Ya está pagado este mes.</p>`
+    : ui.payFixed === f.id ? `<div class="inline-form"><label class="field"><span>¿Con qué cuenta pagaste?</span><select id="pf-acc">${accountOptions(f.accountId)}</select></label>
+        <div class="row wrap"><button class="btn accent sm" data-act="confirmpay" data-id="${f.id}">Confirmar pago de ${fmt(f.amt)}</button><button class="link small" data-act="cancelpay">Cancelar</button></div></div>`
+    : `<div class="row wrap"><button class="btn sec sm" data-act="payfixed" data-id="${f.id}">Pagar este mes</button><button class="link small" data-act="markpaid" data-id="${f.id}">Ya estaba pagado</button></div>`;
+  const body = `<div class="grid2"><label class="field"><span>Concepto</span><input id="fx-n-${f.id}" data-fixed="${f.id}" data-k="name" value="${esc(f.name)}" placeholder="Ej. Renta"></label>
+      <label class="field"><span>Monto al mes</span><input id="fx-a-${f.id}" inputmode="decimal" data-fixed="${f.id}" data-k="amt" value="${toInput(f.amt)}" placeholder="$0"></label></div>
+    <div class="grid2"><label class="field"><span>Categoría</span><span class="catsel" style="--cc:${CATS[c].c}"><select id="fx-c-${f.id}" data-fixed="${f.id}" data-k="cat">${catOptions(c)}</select></span></label>
+      <label class="field"><span>Día de pago</span><span class="catsel" style="--cc:var(--sec)"><select id="fx-d-${f.id}" data-fixed="${f.id}" data-k="dueDay"><option value="">Sin fecha</option>${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}" ${f.dueDay === i + 1 ? "selected" : ""}>Día ${i + 1}</option>`).join("")}</select></span></label></div>
+    ${pay}`;
+  return itemCard("fix:" + f.id, head, body, "delfixed", f.id, `¿Eliminar “${esc(f.name || "este gasto fijo")}”? Dejará de apartarse cada mes.`);
+}
+
+// ───── Selector de temporada con el diseño de la app (antes era la lista nativa del teléfono) ─────
+GLYPH.leaf = '<path d="M5 19C5 10 11 5 20 4c0 9-5 15-14 15z" fill="currentColor"/><path d="M5 19l8-8" stroke="#0003" stroke-width="1.6"/>';
+GLYPH.snow = '<g stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5 12 6l2.5-2.5M9.5 20.5 12 18l2.5 2.5"/></g>';
+const SEASON_GLYPH = { primavera:"flower", verano:"sun", otono:"leaf", invierno:"snow" };
+const themeGlyph = t => glyph(t.kind === "fiesta" ? STAMP_GLYPH[t.id] : SEASON_GLYPH[t.id]);
+function themePicker(){
+  const auto = THEMES[liveHoliday()?.id || seasonOf()], cur = S.themeMode || "auto", y = new Date().getFullYear();
+  const tile = id => { const t = THEMES[id], r = t.kind === "fiesta" ? (holidayRanges(y).find(x => x.id === id) || themeRange(id)) : null;
+    return `<button class="th2" data-act="settheme" data-id="${id}" aria-pressed="${cur === id}"><span class="th-sw" style="background:${t.pal[0][3]}">${themeGlyph(t)}</span><b>${esc(t.name)}</b>${r ? `<small>${rangeLabel(r)}</small>` : ""}</button>`; };
+  return `<button class="th2 auto" data-act="settheme" data-id="auto" aria-pressed="${cur === "auto"}"><span class="th-sw" style="background:${auto.pal[0][3]}">${themeGlyph(auto)}</span>
+      <span class="th-at"><b>Automático</b><small>Cambia solo con la fecha · hoy: ${esc(auto.name)}</small></span></button>
+    <span class="q-lab">Estaciones</span><div class="th-grid s4">${SEASON_ORDER.map(tile).join("")}</div>
+    <span class="q-lab">Fechas festivas</span><div class="th-grid">${HOLIDAY_ORDER.map(tile).join("")}</div>
+    <label class="toggle"><input type="checkbox" id="p-fx" ${S.fx !== false ? "checked" : ""}> Animación de temporada (hojas, nieve, confeti)</label>
+    <p class="small muted" style="margin:0">Elegir una temporada es una vista previa. Toca Automático para que cambie sola con el calendario.</p>`;
+}
+
+const APP_VER = "1.5.2";
 const wvInfo = () => { const m = navigator.userAgent.match(/Chrome\/(\d+)/); return (IS_APP ? "Android WebView " : "Navegador ") + (m ? m[1] : "?") + " · " + Math.round(innerWidth) + "×" + Math.round(innerHeight); };
 function remBody(){
   return `<label class="toggle"><input type="checkbox" id="rem-on" data-act="remtoggle" ${remCfg().on ? "checked" : ""}> Recordatorios activos</label>
@@ -5540,6 +5648,11 @@ function animateView(){
 // ───────────────────────── Eventos ─────────────────────────
 function setPath(path, val){ const [a,b] = path.split("."); S[a][b] = val; }
 const ACT = {
+  itemopen: t => { const k = t.dataset.k; ui.itemOpen = ui.itemOpen === k ? null : k; ui.itemDel = null; ui.payFixed = null; render(); },
+  itemdel: t => { ui.itemDel = t.dataset.k; render(); },
+  itemdelno: () => { ui.itemDel = null; render(); },
+  acctype: t => { const a = S.accounts.find(x => x.id === t.dataset.id); if (!a) return; a.type = t.dataset.val; if (S.onboarded) save(); render(); },
+  settheme: t => { const id = t.dataset.id; S.themeMode = id; save(); applyTheme(); render(); toast(id === "auto" ? "Tema automático según la fecha" : "Vista previa: " + THEMES[id].name); },
   lvlinfo: () => { ui.lvlInfo = !ui.lvlInfo; render(); },
   qty: t => { const it = ui.draft?.items.find(x => x.id === t.dataset.id); if (!it) return;
     const q = Math.min(99, Math.max(1, (it.qty || 1) + (+t.dataset.d))), unit = it.total / (it.qty || 1);
@@ -5797,6 +5910,19 @@ document.addEventListener("change", e => {
 });
 
 // ───────────────────────── Arranque ─────────────────────────
+
+// Configuración: al agregar un ingreso, cuenta o gasto fijo, su tarjeta se abre lista para escribir
+for (const [act, key, list] of [["addincome", "inc", () => S.profile.incomes], ["addfixed", "fix", () => S.fixed], ["addacc", "acc", () => S.accounts]]) {
+  const orig = ACT[act];
+  ACT[act] = t => { if (!(S.onboarded && ui.view === "profile")) return orig(t);
+    orig(t); const l = list() || [], it = l[l.length - 1]; if (!it) return;
+    ui.itemOpen = key + ":" + it.id; ui.itemDel = null; render();
+    const el = document.querySelector(".itm2.open input"); el?.scrollIntoView({ block: "center" }); el?.focus(); };
+}
+// La hoja inferior no regresa hasta arriba cada vez que se vuelve a dibujar
+const renderSinSalto = render;
+render = function(){ const sh = document.querySelector(".sheet2.cfg"), st = sh ? sh.scrollTop : 0, k = ui.cfg;
+  renderSinSalto(); const n = document.querySelector(".sheet2.cfg"); if (n && sh && k === ui.cfg) n.scrollTop = st; };
 (function boot(){
   const local = loadLocal();
   if (local && local.v === 1) S = Object.assign(freshState(), local);
