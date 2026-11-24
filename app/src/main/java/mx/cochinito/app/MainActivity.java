@@ -91,6 +91,8 @@ public class MainActivity extends ComponentActivity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        // El diseño ya define sus tamaños: que la letra grande del sistema no descuadre la app
+        s.setTextZoom(100);
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(true);
         s.setMediaPlaybackRequiresUserGesture(true);
