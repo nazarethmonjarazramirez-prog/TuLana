@@ -1,1 +1,1 @@
-Mejoras de diseño: dictar por voz y foto de producto en la cámara, íconos en Configuración y pantallas que ahora caben bien en celulares chicos o con letra grande.
+Configuración renovada: ingresos, tarjetas y gastos fijos como tarjetas fáciles de editar (eliminar ahora pide confirmación), un selector de temporadas con el diseño de la app y una pantalla de escaneo más limpia.
